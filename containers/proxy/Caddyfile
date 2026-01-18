@@ -1,0 +1,26 @@
+{
+	admin off
+	auto_https off
+	order request_logger first
+}
+
+:80 {
+	request_logger
+
+	handle /status {
+		respond "OK" 200
+	}
+
+	handle /api/* {
+		reverse_proxy {$WEBSERVICE_HOST}:{$WEBSERVICE_PORT}
+	}
+
+	handle {
+		reverse_proxy {$WEBSERVICE_HOST}:{$WEBSERVICE_PORT}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
