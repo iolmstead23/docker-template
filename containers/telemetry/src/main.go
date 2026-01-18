@@ -80,7 +80,7 @@ func main() {
 	cfg := config.Load()
 
 	// Create rotating log writer that handles file rotation at size limits
-	writer, err := rotation.NewRotatingWriter(cfg.LogPath, cfg.MaxFileSize)
+	writer, err := rotation.NewRotatingWriter(cfg.LogPath, cfg.MaxFileSize, cfg.ValidationInterval)
 	if err != nil {
 		log.Fatalf("Failed to initialize rotating writer: %v", err)
 	}
@@ -101,6 +101,7 @@ func main() {
 	log.Printf("Session ID: %s", writer.SessionID())
 	log.Printf("Log path: %s", cfg.LogPath)
 	log.Printf("Max file size: %d bytes", cfg.MaxFileSize)
+	log.Printf("Validation interval: %d writes", cfg.ValidationInterval)
 
 	// Log service start event to its own log file
 	appLogger.Log("INFO", "Telemetry service started", "", "telemetry")

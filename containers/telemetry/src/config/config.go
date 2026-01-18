@@ -8,9 +8,10 @@ import (
 
 // Config holds telemetry service configuration from environment
 type Config struct {
-	Port        string // Port is the HTTP server port to listen on
-	LogPath     string // LogPath is the directory where log files are written
-	MaxFileSize int64  // MaxFileSize is the byte limit before rotating to a new log file
+	Port               string // Port is the HTTP server port to listen on
+	LogPath            string // LogPath is the directory where log files are written
+	MaxFileSize        int64  // MaxFileSize is the byte limit before rotating to a new log file
+	ValidationInterval int    // ValidationInterval is how often to check if log file still exists
 }
 
 // Load reads environment variables and constructs telemetry configuration
@@ -41,10 +42,25 @@ func Load() *Config {
 		log.Printf("TELEMETRY_MAX_FILE_SIZE not set, using default %d bytes", maxFileSize)
 	}
 
+	// Read validation interval from environment with default fallback
+	validationIntervalStr := os.Getenv("TELEMETRY_VALIDATION_INTERVAL")
+	validationInterval := 50 // Default: check every 50 writes
+	if validationIntervalStr != "" {
+		if parsed, err := strconv.Atoi(validationIntervalStr); err == nil && parsed > 0 {
+			validationInterval = parsed
+			log.Printf("Using configured validation interval: %d writes", validationInterval)
+		} else {
+			log.Printf("Invalid TELEMETRY_VALIDATION_INTERVAL '%s', using default %d writes: %v", validationIntervalStr, validationInterval, err)
+		}
+	} else {
+		log.Printf("TELEMETRY_VALIDATION_INTERVAL not set, using default %d writes", validationInterval)
+	}
+
 	// Return fully configured telemetry service settings
 	return &Config{
-		Port:        port,
-		LogPath:     logPath,
-		MaxFileSize: maxFileSize,
+		Port:               port,
+		LogPath:            logPath,
+		MaxFileSize:        maxFileSize,
+		ValidationInterval: validationInterval,
 	}
 }
