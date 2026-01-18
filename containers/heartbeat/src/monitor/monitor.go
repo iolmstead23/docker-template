@@ -2,20 +2,25 @@ package monitor
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"heartbeat/client"
 	"heartbeat/config"
+
+	"github.com/google/uuid"
 )
 
+// Monitor manages health checks for multiple service endpoints
 type Monitor struct {
-	targets   []config.Target
-	telemetry *client.TelemetryClient
-	timeout   time.Duration
+	targets   []config.Target          // targets is the list of services to check
+	telemetry *client.TelemetryClient  // telemetry is the client for sending health status logs
+	timeout   time.Duration            // timeout is the HTTP request timeout for health checks
 }
 
+// HealthStatus represents the result of a single service health check
 type HealthStatus struct {
 	Name    string
 	Healthy bool
@@ -23,6 +28,7 @@ type HealthStatus struct {
 	Error   string
 }
 
+// NewMonitor creates a monitor for checking multiple service endpoints
 func NewMonitor(targets []config.Target, telemetry *client.TelemetryClient, timeout time.Duration) *Monitor {
 	return &Monitor{
 		targets:   targets,
@@ -31,6 +37,7 @@ func NewMonitor(targets []config.Target, telemetry *client.TelemetryClient, time
 	}
 }
 
+// CheckAll runs health checks on all configured targets concurrently
 func (m *Monitor) CheckAll() []HealthStatus {
 	results := make([]HealthStatus, len(m.targets))
 
@@ -41,12 +48,15 @@ func (m *Monitor) CheckAll() []HealthStatus {
 	return results
 }
 
+// checkTarget performs an HTTP GET health check on a single service
 func (m *Monitor) checkTarget(target config.Target) HealthStatus {
 	status := HealthStatus{Name: target.Name}
 
+	// Create dedicated HTTP client with timeout for this check
 	client := &http.Client{Timeout: m.timeout}
 	start := time.Now()
 
+	// Execute health check and measure response latency
 	resp, err := client.Get(target.URL)
 	status.Latency = time.Since(start)
 
@@ -57,6 +67,7 @@ func (m *Monitor) checkTarget(target config.Target) HealthStatus {
 	}
 	defer resp.Body.Close()
 
+	// Treat 2xx status codes as healthy, anything else as unhealthy
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		status.Healthy = true
 	} else {
@@ -67,7 +78,9 @@ func (m *Monitor) checkTarget(target config.Target) HealthStatus {
 	return status
 }
 
+// LogResults aggregates health check results and logs to telemetry with correlation ID
 func (m *Monitor) LogResults(results []HealthStatus) {
+	// Separate services into healthy and unhealthy groups for reporting
 	var healthy, unhealthy []string
 
 	for _, r := range results {
@@ -78,13 +91,22 @@ func (m *Monitor) LogResults(results []HealthStatus) {
 		}
 	}
 
+	// Generate correlation ID for this health check batch
+	healthCheckLogID := uuid.New().String()
+
 	var message string
 	if len(unhealthy) == 0 {
 		message = fmt.Sprintf("All services healthy: %s", strings.Join(healthy, ", "))
-		m.telemetry.Log("INFO", message)
+		// Log successful health checks to telemetry with correlation ID
+		if err := m.telemetry.Log("INFO", message, healthCheckLogID); err != nil {
+			log.Printf("Failed to send health status to telemetry: %v", err)
+		}
 	} else {
 		message = fmt.Sprintf("Service issues - healthy: [%s], unhealthy: [%s]",
 			strings.Join(healthy, ", "), strings.Join(unhealthy, ", "))
-		m.telemetry.Log("WARN", message)
+		// Log health issues to telemetry as warning with correlation ID
+		if err := m.telemetry.Log("WARN", message, healthCheckLogID); err != nil {
+			log.Printf("Failed to send health warning to telemetry: %v", err)
+		}
 	}
 }
