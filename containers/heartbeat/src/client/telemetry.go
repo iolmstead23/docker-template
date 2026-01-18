@@ -37,7 +37,7 @@ func (c *TelemetryClient) Log(level, message, logID string) error {
 	req := LogRequest{
 		Level:   level,
 		Message: message,
-		LogID:   logID, // Now properly passed through
+		LogID:   logID,
 		Source:  "heartbeat",
 	}
 

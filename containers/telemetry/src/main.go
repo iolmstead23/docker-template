@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,10 +13,69 @@ import (
 	"telemetry/config"
 	"telemetry/logger"
 	"telemetry/rotation"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
+
+// initTracer initializes OpenTelemetry tracer provider
+func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
+	// Get OTLP endpoint from environment or use default
+	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otlpEndpoint == "" {
+		otlpEndpoint = "http://otel-collector:4318"
+	}
+
+	// Create OTLP trace exporter using HTTP protocol
+	exporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint(otlpEndpoint),
+		otlptracehttp.WithInsecure(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create resource with service name
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceName("telemetry"),
+			semconv.ServiceVersion("1.0.0"),
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create tracer provider
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(res),
+	)
+
+	otel.SetTracerProvider(tp)
+	return tp, nil
+}
 
 // main initializes and runs the telemetry logging service
 func main() {
+	ctx := context.Background()
+
+	// Initialize OpenTelemetry tracer
+	tp, err := initTracer(ctx)
+	if err != nil {
+		log.Printf("Failed to initialize tracer: %v", err)
+	} else {
+		defer func() {
+			if err := tp.Shutdown(ctx); err != nil {
+				log.Printf("Error shutting down tracer provider: %v", err)
+			}
+		}()
+		log.Println("OpenTelemetry tracer initialized")
+	}
+
 	// Load configuration from environment (port, log path, max file size)
 	cfg := config.Load()
 

@@ -1,8 +1,10 @@
 package tracing
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -10,6 +12,13 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 
 	"proxy/telemetry"
 )
@@ -18,6 +27,49 @@ import (
 func init() {
 	caddy.RegisterModule(RequestLogger{})
 	httpcaddyfile.RegisterHandlerDirective("request_logger", parseCaddyfile)
+
+	// Initialize OpenTelemetry tracer
+	initTracer()
+}
+
+// initTracer initializes OpenTelemetry tracer provider for proxy service
+func initTracer() {
+	ctx := context.Background()
+
+	// Get OTLP endpoint from environment or use default
+	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otlpEndpoint == "" {
+		otlpEndpoint = "http://otel-collector:4318"
+	}
+
+	// Create OTLP trace exporter using HTTP protocol
+	exporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint(otlpEndpoint),
+		otlptracehttp.WithInsecure(),
+	)
+	if err != nil {
+		// Log error but don't fail - tracing is optional
+		return
+	}
+
+	// Create resource with service name
+	res, err := resource.New(ctx,
+		resource.WithAttributes(
+			semconv.ServiceName("proxy"),
+			semconv.ServiceVersion("1.0.0"),
+		),
+	)
+	if err != nil {
+		return
+	}
+
+	// Create tracer provider
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(res),
+	)
+
+	otel.SetTracerProvider(tp)
 }
 
 // RequestLogger is a Caddy middleware that adds request tracing and telemetry
@@ -43,11 +95,24 @@ func (rl *RequestLogger) Validate() error {
 
 // ServeHTTP handles each request by adding trace ID and logging to telemetry
 func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
+	// Create span for this HTTP request
+	tracer := otel.Tracer("proxy")
+	ctx, span := tracer.Start(r.Context(), "http-request")
+	defer span.End()
+
 	// Extract or generate X-Log-ID header for request correlation
 	logID := r.Header.Get("X-Log-ID")
 	if logID == "" {
 		logID = uuid.New().String()
 	}
+
+	// Link correlation ID to span for log-trace correlation
+	span.SetAttributes(
+		attribute.String("log.correlation.id", logID),
+		attribute.String("http.method", r.Method),
+		attribute.String("http.url", r.URL.Path),
+		attribute.String("http.host", r.Host),
+	)
 
 	// Propagate log ID to both request and response for end-to-end tracing
 	r.Header.Set("X-Log-ID", logID)
@@ -59,11 +124,27 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	// Wrap response writer to capture status code
 	rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-	// Pass request to next handler in the chain
+	// Pass request to next handler with span context
+	r = r.WithContext(ctx)
 	err := next.ServeHTTP(rw, r)
 
 	// Calculate request duration for performance monitoring
 	duration := time.Since(start)
+
+	// Add response details to span
+	span.SetAttributes(
+		attribute.Int("http.status_code", rw.statusCode),
+		attribute.Int64("http.duration_ms", duration.Milliseconds()),
+	)
+
+	// Set span status based on HTTP status code
+	if rw.statusCode >= 500 {
+		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", rw.statusCode))
+	} else if rw.statusCode >= 400 {
+		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", rw.statusCode))
+	} else {
+		span.SetStatus(codes.Ok, "")
+	}
 
 	// Skip logging for health check endpoints to reduce log noise
 	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {

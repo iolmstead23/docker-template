@@ -10,7 +10,13 @@
   "dependencies": {
     "next": "14.0.4",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/sdk-node": "^0.45.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.45.1",
+    "@opentelemetry/resources": "^1.19.0",
+    "@opentelemetry/semantic-conventions": "^1.19.0",
+    "@opentelemetry/instrumentation": "^0.45.1"
   },
   "devDependencies": {
     "@types/node": "20.10.5",

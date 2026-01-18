@@ -19,6 +19,7 @@ services:
       - TELEMETRY_PORT=${TELEMETRY_PORT}
       - TELEMETRY_LOG_PATH=${TELEMETRY_LOG_PATH}
       - TELEMETRY_MAX_FILE_SIZE=${TELEMETRY_MAX_FILE_SIZE}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     volumes:
       - telemetry_logs:${TELEMETRY_LOG_PATH}
       - ./logs:${TELEMETRY_LOG_PATH}
@@ -46,6 +47,7 @@ services:
       - PROXY_PORT=${PROXY_PORT}
       - WEBSERVICE_HOST=${WEBSERVICE_HOST}
       - WEBSERVICE_PORT=${WEBSERVICE_PORT}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     networks:
       - internal
     depends_on:
@@ -70,6 +72,7 @@ services:
       - TELEMETRY_PORT=${TELEMETRY_PORT}
       - WEBSERVICE_HOST=${WEBSERVICE_HOST}
       - WEBSERVICE_PORT=${WEBSERVICE_PORT}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     ports:
       - "3000:${PROXY_PORT}"
     networks:
@@ -96,6 +99,7 @@ services:
       - WEBSERVICE_PORT=${WEBSERVICE_PORT}
       - TELEMETRY_HOST=${TELEMETRY_HOST}
       - TELEMETRY_PORT=${TELEMETRY_PORT}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     networks:
       - internal
     depends_on:
@@ -108,3 +112,30 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: otel-collector
+    hostname: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./containers/otel-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    networks:
+      - internal
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: jaeger
+    hostname: jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger UI
+    networks:
+      - internal
+      - external
+    restart: unless-stopped
