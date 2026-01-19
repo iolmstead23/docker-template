@@ -12,9 +12,6 @@ import (
 	"heartbeat/config"
 
 	"github.com/google/uuid"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
 )
 
 // Monitor manages health checks for multiple service endpoints
@@ -54,33 +51,12 @@ func (m *Monitor) CheckAll() []HealthStatus {
 
 // CheckAllWithContext runs health checks with OpenTelemetry tracing support
 func (m *Monitor) CheckAllWithContext(ctx context.Context) []HealthStatus {
-	tracer := otel.Tracer("heartbeat")
 	results := make([]HealthStatus, len(m.targets))
 
 	for i, target := range m.targets {
-		// Create span for each individual health check
-		_, span := tracer.Start(ctx, "health-check")
-		span.SetAttributes(
-			attribute.String("service.name", target.Name),
-			attribute.String("service.url", target.URL),
-		)
-
+		// Run health check WITHOUT creating span or injecting trace context
+		// Health checks to /status are already logged in telemetry backend
 		results[i] = m.checkTarget(target)
-
-		// Add health check results to span attributes
-		span.SetAttributes(
-			attribute.Bool("health.check.healthy", results[i].Healthy),
-			attribute.Int64("health.check.latency_ms", results[i].Latency.Milliseconds()),
-		)
-
-		if !results[i].Healthy {
-			span.SetStatus(codes.Error, results[i].Error)
-			span.SetAttributes(attribute.String("health.check.error", results[i].Error))
-		} else {
-			span.SetStatus(codes.Ok, "")
-		}
-
-		span.End()
 	}
 
 	return results

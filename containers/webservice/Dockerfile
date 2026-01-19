@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY src/package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY src/ ./
 RUN npm run build

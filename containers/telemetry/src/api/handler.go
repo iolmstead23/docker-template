@@ -90,15 +90,10 @@ func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleStatus returns service health information via GET /status
+// Note: No tracing for health checks to reduce noise
 func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
-	// Create span for status request
-	tracer := otel.Tracer("telemetry")
-	_, span := tracer.Start(r.Context(), "status-request")
-	defer span.End()
-
 	// Only accept GET requests for status checks
 	if r.Method != http.MethodGet {
-		span.SetStatus(codes.Error, "method not allowed")
 		h.sendError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -108,9 +103,6 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		Status:    "ok",
 		SessionID: h.logger.SessionID(),
 	}
-
-	span.SetAttributes(attribute.String("session.id", h.logger.SessionID()))
-	span.SetStatus(codes.Ok, "")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)

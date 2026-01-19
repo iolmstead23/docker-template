@@ -44,7 +44,7 @@ func Load() *Config {
 
 	// Read validation interval from environment with default fallback
 	validationIntervalStr := os.Getenv("TELEMETRY_VALIDATION_INTERVAL")
-	validationInterval := 50 // Default: check every 50 writes
+	validationInterval := 10 // Default: check every 10 writes
 	if validationIntervalStr != "" {
 		if parsed, err := strconv.Atoi(validationIntervalStr); err == nil && parsed > 0 {
 			validationInterval = parsed

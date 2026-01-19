@@ -11,11 +11,11 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
@@ -36,10 +36,10 @@ func init() {
 func initTracer() {
 	ctx := context.Background()
 
-	// Get OTLP endpoint from environment or use default
+	// Get OTLP endpoint from environment or use default (host:port only, no protocol)
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
-		otlpEndpoint = "http://otel-collector:4318"
+		otlpEndpoint = "otel-collector:4318"
 	}
 
 	// Create OTLP trace exporter using HTTP protocol
@@ -72,6 +72,23 @@ func initTracer() {
 	)
 
 	otel.SetTracerProvider(tp)
+
+	// Configure trace context propagation for distributed tracing
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
+	// Create test span to verify tracer is working
+	tracer := otel.Tracer("proxy")
+	_, span := tracer.Start(ctx, "service-startup")
+	span.SetAttributes(
+		semconv.ServiceName("proxy"),
+	)
+	span.End()
+
+	// Force flush to ensure startup span is exported
+	tp.ForceFlush(ctx)
 }
 
 // RequestLogger is a Caddy middleware that adds request tracing and telemetry
@@ -97,15 +114,26 @@ func (rl *RequestLogger) Validate() error {
 
 // ServeHTTP handles each request by adding trace ID and logging to telemetry
 func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	// Create span for this HTTP request
+	// Skip tracing for health check endpoints (already logged in telemetry backend)
+	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {
+		// Still forward request, but don't create span
+		return next.ServeHTTP(w, r)
+	}
+
+	// Extract trace context from incoming request headers
+	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+
+	// Create span with extracted context for distributed tracing
 	tracer := otel.Tracer("proxy")
-	ctx, span := tracer.Start(r.Context(), "http-request")
+	ctx, span := tracer.Start(ctx, "http-request")
 	defer span.End()
 
 	// Extract or generate X-Log-ID header for request correlation
 	logID := r.Header.Get("X-Log-ID")
 	if logID == "" {
-		logID = uuid.New().String()
+		// Use trace ID as correlation ID if no X-Log-ID provided
+		traceID := span.SpanContext().TraceID().String()
+		logID = traceID
 	}
 
 	// Link correlation ID to span for log-trace correlation
@@ -166,8 +194,8 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		level = "ERROR"
 	}
 
-	// Send request log to telemetry service
-	telemetry.Log(level, message, logID)
+	// Send request log to telemetry service with trace context
+	telemetry.Log(ctx, level, message, logID)
 
 	return err
 }

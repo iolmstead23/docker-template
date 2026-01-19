@@ -16,17 +16,19 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
 // initTracer initializes OpenTelemetry tracer provider
 func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	// Get OTLP endpoint from environment or use default
+	// Get OTLP endpoint from environment or use default (host:port only, no protocol)
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
-		otlpEndpoint = "http://otel-collector:4318"
+		otlpEndpoint = "otel-collector:4318"
 	}
 
 	// Create OTLP trace exporter using HTTP protocol
@@ -56,6 +58,13 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	)
 
 	otel.SetTracerProvider(tp)
+
+	// Configure trace context propagation for distributed tracing
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
 	return tp, nil
 }
 
@@ -74,6 +83,17 @@ func main() {
 			}
 		}()
 		log.Println("OpenTelemetry tracer initialized")
+
+		// Create test span to verify tracer is working
+		tracer := otel.Tracer("heartbeat")
+		_, span := tracer.Start(ctx, "service-startup")
+		span.SetAttributes(
+			semconv.ServiceName("heartbeat"),
+		)
+		span.End()
+
+		// Force flush to ensure startup span is exported
+		tp.ForceFlush(ctx)
 	}
 
 	// Load configuration from environment variables with sensible defaults
@@ -144,16 +164,26 @@ func runCheck(mon *monitor.Monitor) {
 	results := mon.CheckAllWithContext(ctx)
 	mon.LogResults(results)
 
-	// Add span attributes based on results
+	// Add span attributes and events based on results
 	healthyCount := 0
 	unhealthyCount := 0
 	for _, r := range results {
 		if r.Healthy {
 			healthyCount++
 			log.Printf("  [OK] %s (%dms)", r.Name, r.Latency.Milliseconds())
+			// Record health check result as span event
+			span.AddEvent("health-check-success", trace.WithAttributes(
+				attribute.String("service.name", r.Name),
+				attribute.Int64("latency_ms", r.Latency.Milliseconds()),
+			))
 		} else {
 			unhealthyCount++
 			log.Printf("  [FAIL] %s: %s", r.Name, r.Error)
+			// Record health check result as span event
+			span.AddEvent("health-check-failed", trace.WithAttributes(
+				attribute.String("service.name", r.Name),
+				attribute.String("error", r.Error),
+			))
 		}
 	}
 

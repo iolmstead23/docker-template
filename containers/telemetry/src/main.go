@@ -16,6 +16,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
@@ -23,10 +24,10 @@ import (
 
 // initTracer initializes OpenTelemetry tracer provider
 func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	// Get OTLP endpoint from environment or use default
+	// Get OTLP endpoint from environment or use default (host:port only, no protocol)
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
-		otlpEndpoint = "http://otel-collector:4318"
+		otlpEndpoint = "otel-collector:4318"
 	}
 
 	// Create OTLP trace exporter using HTTP protocol
@@ -56,6 +57,13 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	)
 
 	otel.SetTracerProvider(tp)
+
+	// Configure trace context propagation for distributed tracing
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
 	return tp, nil
 }
 
@@ -74,6 +82,17 @@ func main() {
 			}
 		}()
 		log.Println("OpenTelemetry tracer initialized")
+
+		// Create test span to verify tracer is working
+		tracer := otel.Tracer("telemetry")
+		_, span := tracer.Start(ctx, "service-startup")
+		span.SetAttributes(
+			semconv.ServiceName("telemetry"),
+		)
+		span.End()
+
+		// Force flush to ensure startup span is exported
+		tp.ForceFlush(ctx)
 	}
 
 	// Load configuration from environment (port, log path, max file size)

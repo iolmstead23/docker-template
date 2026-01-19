@@ -2,12 +2,17 @@ package telemetry
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 // Client sends log entries to the centralized telemetry service
@@ -49,20 +54,31 @@ func init() {
 }
 
 // Log sends a log entry to telemetry with local fallback on failure
-func Log(level, message, logID string) {
+func Log(ctx context.Context, level, message, logID string) {
 	if defaultClient == nil {
 		// Log locally if telemetry client not initialized
 		log.Printf("[WARN] Telemetry client not initialized, cannot log: %s", message)
 		return
 	}
 	// Attempt to send log to telemetry service, fallback to local logging on failure
-	if err := defaultClient.Log(level, message, logID); err != nil {
+	if err := defaultClient.Log(ctx, level, message, logID); err != nil {
 		log.Printf("[ERROR] Failed to send telemetry log: %v (original message: %s)", err, message)
 	}
 }
 
-// Log sends the log request via HTTP POST with error handling
-func (c *Client) Log(level, message, logID string) error {
+// Log sends the log request via HTTP POST with distributed tracing support
+func (c *Client) Log(ctx context.Context, level, message, logID string) error {
+	// Create span for telemetry logging request (log requests ARE traced)
+	tracer := otel.Tracer("proxy")
+	ctx, span := tracer.Start(ctx, "telemetry-log")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("log.level", level),
+		attribute.String("log.correlation.id", logID),
+		attribute.String("telemetry.endpoint", c.url),
+	)
+
 	req := LogRequest{
 		Level:   level,
 		Message: message,
@@ -72,18 +88,33 @@ func (c *Client) Log(level, message, logID string) error {
 
 	body, err := json.Marshal(req)
 	if err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("failed to marshal log request: %w", err)
 	}
 
-	resp, err := c.client.Post(c.url, "application/json", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.url, bytes.NewReader(body))
 	if err != nil {
+		span.RecordError(err)
+		return fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	// Inject trace context into request headers for distributed tracing
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(httpReq.Header))
+
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("failed to send HTTP request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Check HTTP status code to ensure telemetry service accepted the log
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("telemetry service returned status %d", resp.StatusCode)
+		err := fmt.Errorf("telemetry service returned status %d", resp.StatusCode)
+		span.RecordError(err)
+		return err
 	}
 
 	return nil
