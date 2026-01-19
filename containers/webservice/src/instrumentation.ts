@@ -1,6 +1,6 @@
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { BatchSpanProcessor, SpanProcessor, ReadableSpan, Span } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
@@ -64,19 +64,19 @@ export function register() {
 
   // Create resource with service information
   const resource = new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: 'webservice',
-    [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
+    [ATTR_SERVICE_NAME]: 'webservice',
+    [ATTR_SERVICE_VERSION]: '1.0.0',
   });
 
-  // Create tracer provider
-  const provider = new NodeTracerProvider({
-    resource: resource,
-  });
-
-  // Add batch span processor wrapped in health check filter
+  // Create batch span processor wrapped in health check filter
   const batchProcessor = new BatchSpanProcessor(traceExporter);
   const filterProcessor = new HealthCheckFilterProcessor(batchProcessor);
-  provider.addSpanProcessor(filterProcessor);
+
+  // Create tracer provider with span processors
+  const provider = new NodeTracerProvider({
+    resource: resource,
+    spanProcessors: [filterProcessor],
+  });
 
   // Register the provider
   provider.register({
