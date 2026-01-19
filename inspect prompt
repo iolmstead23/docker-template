@@ -1,0 +1,49 @@
+# Code Review and Git Commit Instructions
+
+## Primary Objective
+
+I need you to inspect my codebase thoroughly and then create a commit of the changes to git. I want you to look at all the edits that have been made and record the changes in a git commit with an appropriate commit message.
+
+## Code Audit Requirements
+
+While you are reading over everything, I want you to audit the code comprehensively. I need you to make sure that all scripts are properly atomized, meaning each function or module should have a single, well-defined responsibility. I want to verify that packages are being structured correctly throughout the codebase.
+
+## Package and Container Structure
+
+There should be an initialization file for each container to ensure proper package organization. I want you to look through each script and verify that I am not leaving any residual debugging events, print statements, or temporary testing code. I need the scripts to maintain a maximum nesting depth of no longer than three indents for each function to ensure readability and reduce complexity.
+
+## Naming Conventions and Code Organization
+
+All handles for variables and functions need to be appropriately named using clear, descriptive identifiers that convey their purpose. I want to make sure the packages are clearly separated with distinct boundaries between different modules. I want separate responsibilities for each container and package, ensuring that each one serves a specific purpose without overlap.
+
+## Error Handling and Logging
+
+I want to make sure I am using extensive error catching and logging throughout the application. I want to make sure I am able to use multiple standards for logging and tracing to support different monitoring tools and environments. I want to verify that I am using tracing correctly for events to enable proper debugging and performance monitoring.
+
+## Type Safety and Data Integrity
+
+I want to make sure I am using proper type safety standards across all code. I want to make sure I am not using default or generic data types where more specific types would be appropriate. I want to make sure I am enforcing correct data types while the data moves between API calls to prevent type-related bugs and ensure data integrity.
+
+## Logging Standards
+
+I want to verify that I am using consistent logging standards for the different monitoring and logging events throughout the application. The logging approach should be uniform across all containers and packages to facilitate easier debugging and monitoring.
+
+## Code Cleanup
+
+Please let me know if I need to remove any redundant code that serves no purpose. I want to make sure there is no orphaned code that is never used or called anywhere in the application. I want to make sure each line in the scripts is necessary and serves a clear function.
+
+## Documentation Standards
+
+Make sure to use proper commenting throughout the code. I only want to have inline comments for now, and I do not want any docstrings created at this time. Only use inline comments for the scripts to explain complex logic or important decisions. Do not use boxes or multi-line comment blocks for comments. Each comment should only be one single line that appears on the same line as the code it describes or immediately above it.
+
+## Environmental Variables and Configuration Management
+
+I want you to inspect the downstream logic as the data passes throughout the container ecosystem to ensure proper data flow and configuration propagation. I want to make sure I am using proper environmental variables for all configuration settings that may vary between environments. I want you to inspect each configuration file for each container to verify that settings are properly externalized and not hard-coded. Please inspect the Dockerfile and the docker-compose file to make sure environmental variables are being passed downstream correctly to all containers that need them. I want to make sure that I am creating proper separation between each layer by using init entrypoints and main scripts that handle configuration loading and application initialization separately. I need to make sure there are no hard-coded configuration variables that should be replaced with environmental variables for better flexibility and security. I want to make sure I am using proper naming conventions for environmental variables, such as using uppercase letters with underscores and meaningful prefixes that indicate which container or service they belong to.
+
+## Container Isolation
+
+Please make sure you are inspecting each container for unused or redundant code that could be eliminated. Do not share any information or state between containers through shared modules or global variables. The containers should operate completely separately and they should only communicate through valid API calls using well-defined interfaces. It is okay to use code that is redundant for each container because it is necessary for proper isolation and independence. I want to make sure there is a clear separation of responsibility between all containers.
+
+## Container Independence
+
+Use atomized containers that are designed separately even if they share the same snippets of code or similar functionality. The snippets of code can appear and repeat in multiple places because each container needs to be created with its own isolated dependencies and logic. This duplication is intentional and necessary to maintain container independence and avoid coupling between different parts of the system.
