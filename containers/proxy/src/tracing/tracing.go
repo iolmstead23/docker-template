@@ -114,9 +114,14 @@ func (rl *RequestLogger) Validate() error {
 
 // ServeHTTP handles each request by adding trace ID and logging to telemetry
 func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	// Skip tracing for health check endpoints (already logged in telemetry backend)
+	// Skip tracing for health check endpoints and Jaeger UI requests
 	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {
 		// Still forward request, but don't create span
+		return next.ServeHTTP(w, r)
+	}
+
+	// Skip tracing for Jaeger UI requests to prevent them from appearing in traces
+	if r.Host == "jaeger:16686" || r.Host == "localhost:16686" {
 		return next.ServeHTTP(w, r)
 	}
 
@@ -176,8 +181,13 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		span.SetStatus(codes.Ok, "")
 	}
 
-	// Skip logging for health check endpoints to reduce log noise
+	// Skip logging for health check endpoints and Jaeger UI to reduce log noise
 	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {
+		return err
+	}
+
+	// Skip logging for Jaeger UI requests
+	if r.Host == "jaeger:16686" || r.Host == "localhost:16686" {
 		return err
 	}
 

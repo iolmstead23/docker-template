@@ -83,11 +83,25 @@ export function register() {
     propagator: new W3CTraceContextPropagator(),
   });
 
+  // Build ignore patterns for internal services using environment variables
+  const telemetryPort = process.env.TELEMETRY_PORT || '8081';
+  const ignorePatterns = [
+    /otel-collector/,                                    // Ignore OTLP exporter requests
+    new RegExp(`telemetry:${telemetryPort}`),           // Ignore telemetry logging requests
+    new RegExp(`localhost:${telemetryPort}`),           // Ignore local telemetry requests
+    /jaeger/,                                            // Ignore Jaeger UI and backend requests
+    /:16686/,                                            // Ignore Jaeger UI port
+    /:4317/,                                             // Ignore Jaeger OTLP gRPC port
+    /:4318/,                                             // Ignore Jaeger OTLP HTTP port
+  ];
+
   // Register HTTP instrumentation for automatic tracing of HTTP requests
   registerInstrumentations({
     instrumentations: [
       new HttpInstrumentation({
         ignoreIncomingPaths: ['/api/status', '/status'], // Don't trace health checks
+        // Ignore internal service requests to prevent tracing recursion
+        ignoreOutgoingUrls: ignorePatterns,
       }),
     ],
   });
