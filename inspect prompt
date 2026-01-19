@@ -47,3 +47,7 @@ Please make sure you are inspecting each container for unused or redundant code 
 ## Container Independence
 
 Use atomized containers that are designed separately even if they share the same snippets of code or similar functionality. The snippets of code can appear and repeat in multiple places because each container needs to be created with its own isolated dependencies and logic. This duplication is intentional and necessary to maintain container independence and avoid coupling between different parts of the system.
+
+## MCP
+
+I want you to use the Ref MCP tools in order to reference the current documentation for codes, snippets, and other information that are relevant to your work.
