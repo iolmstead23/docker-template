@@ -49,6 +49,7 @@ func initTracer() {
 	)
 	if err != nil {
 		// Log error but don't fail - tracing is optional
+		fmt.Fprintf(os.Stderr, "[WARN] Failed to initialize OTLP trace exporter: %v\n", err)
 		return
 	}
 
@@ -60,6 +61,7 @@ func initTracer() {
 		),
 	)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[WARN] Failed to create tracer resource: %v\n", err)
 		return
 	}
 
