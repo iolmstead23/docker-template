@@ -21,7 +21,7 @@ COPY --from=builder /app/public ./public
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-RUN mkdir -p /var/log/nginx /var/run
+RUN mkdir -p /var/log/nginx /var/run /app/state
 
 COPY init.sh .
 RUN chmod +x init.sh

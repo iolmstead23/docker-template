@@ -4,7 +4,6 @@
 .env.*.local
 
 # Claude
-
 .claude
 
 # Log files
@@ -51,3 +50,6 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Other
+state

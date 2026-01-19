@@ -8,6 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
     "@opentelemetry/api": "^1.7.0",
     "@opentelemetry/core": "^1.19.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.45.1",
@@ -19,12 +21,17 @@
     "@opentelemetry/semantic-conventions": "^1.19.0",
     "next": "^14.2.35",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "20.10.5",
     "@types/react": "18.2.45",
     "@types/react-dom": "18.2.18",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
     "typescript": "5.3.3"
   }
 }
