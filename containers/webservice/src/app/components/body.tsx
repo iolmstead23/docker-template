@@ -1,120 +1,79 @@
-import { PaperClipIcon } from "@heroicons/react/20/solid";
+import Link from "next/link";
 
 export default function Body() {
   return (
     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-gray-800/50 dark:shadow-none dark:inset-ring dark:inset-ring-white/10">
       <div className="px-4 py-6 sm:px-6">
         <h3 className="text-base/7 font-semibold text-gray-900 dark:text-white">
-          Applicant Information
+          Application Overview
         </h3>
         <p className="mt-1 max-w-2xl text-sm/6 text-gray-500 dark:text-gray-300">
-          Personal details and application.
+          Containerized data processing applications
         </p>
       </div>
       <div className="border-t border-gray-100 dark:border-white/5">
         <dl className="divide-y divide-gray-100 dark:divide-white/5">
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Full name
+              ZettelTK
             </dt>
             <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0 dark:text-gray-300">
-              Margot Foster
+              <p className="mb-2">
+                Knowledge analysis toolkit for processing personal notes and generating insights through automated analysis.
+              </p>
+              <div className="flex items-center gap-4">
+                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-white/10 dark:text-gray-400">
+                  Not Connected
+                </span>
+                <Link
+                  href="/zettel"
+                  className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  View Details →
+                </Link>
+              </div>
             </dd>
           </div>
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Application for
+              Image Processing Toolkit
             </dt>
             <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0 dark:text-gray-300">
-              Backend Developer
+              <p className="mb-2">
+                ML dataset preparation tool for streamlining image dataset management, preprocessing, and model training workflows.
+              </p>
+              <div className="flex items-center gap-4">
+                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-white/10 dark:text-gray-400">
+                  Not Connected
+                </span>
+                <Link
+                  href="/image-processing"
+                  className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  View Details →
+                </Link>
+              </div>
             </dd>
           </div>
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
             <dt className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Email address
+              Prompt Wizard
             </dt>
             <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0 dark:text-gray-300">
-              margotfoster@example.com
-            </dd>
-          </div>
-          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Salary expectation
-            </dt>
-            <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0 dark:text-gray-300">
-              $120,000
-            </dd>
-          </div>
-          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              About
-            </dt>
-            <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0 dark:text-gray-300">
-              Fugiat ipsum ipsum deserunt culpa aute sint do nostrud anim
-              incididunt cillum culpa consequat. Excepteur qui ipsum aliquip
-              consequat sint. Sit id mollit nulla mollit nostrud in ea officia
-              proident. Irure nostrud pariatur mollit ad adipisicing
-              reprehenderit deserunt qui eu.
-            </dd>
-          </div>
-          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt className="text-sm/6 font-medium text-gray-900 dark:text-gray-100">
-              Attachments
-            </dt>
-            <dd className="mt-2 text-sm text-gray-900 sm:col-span-2 sm:mt-0 dark:text-gray-100">
-              <ul
-                role="list"
-                className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-white/5 dark:border-white/10"
-              >
-                <li className="flex items-center justify-between py-4 pr-5 pl-4 text-sm/6">
-                  <div className="flex w-0 flex-1 items-center">
-                    <PaperClipIcon
-                      aria-hidden="true"
-                      className="size-5 shrink-0 text-gray-400 dark:text-gray-500"
-                    />
-                    <div className="ml-4 flex min-w-0 flex-1 gap-2">
-                      <span className="truncate font-medium text-gray-900 dark:text-gray-100">
-                        resume_back_end_developer.pdf
-                      </span>
-                      <span className="shrink-0 text-gray-400 dark:text-gray-500">
-                        2.4mb
-                      </span>
-                    </div>
-                  </div>
-                  <div className="ml-4 shrink-0">
-                    <a
-                      href="#"
-                      className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
-                    >
-                      Download
-                    </a>
-                  </div>
-                </li>
-                <li className="flex items-center justify-between py-4 pr-5 pl-4 text-sm/6">
-                  <div className="flex w-0 flex-1 items-center">
-                    <PaperClipIcon
-                      aria-hidden="true"
-                      className="size-5 shrink-0 text-gray-400 dark:text-gray-500"
-                    />
-                    <div className="ml-4 flex min-w-0 flex-1 gap-2">
-                      <span className="truncate font-medium text-gray-900 dark:text-gray-100">
-                        coverletter_back_end_developer.pdf
-                      </span>
-                      <span className="shrink-0 text-gray-400 dark:text-gray-500">
-                        4.5mb
-                      </span>
-                    </div>
-                  </div>
-                  <div className="ml-4 shrink-0">
-                    <a
-                      href="#"
-                      className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
-                    >
-                      Download
-                    </a>
-                  </div>
-                </li>
-              </ul>
+              <p className="mb-2">
+                AI prompt engineering and management toolkit for creating, testing, and organizing prompt templates (In Development).
+              </p>
+              <div className="flex items-center gap-4">
+                <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-white/10 dark:text-gray-400">
+                  Not Yet Deployed
+                </span>
+                <Link
+                  href="/prompt-wizard"
+                  className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  View Details →
+                </Link>
+              </div>
             </dd>
           </div>
         </dl>

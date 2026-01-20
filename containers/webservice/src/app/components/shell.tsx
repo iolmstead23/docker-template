@@ -11,28 +11,19 @@ import {
 } from "@headlessui/react";
 import {
   Bars3Icon,
-  CalendarIcon,
   ChartPieIcon,
   Cog6ToothIcon,
   DocumentDuplicateIcon,
   FolderIcon,
   HomeIcon,
-  UsersIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: HomeIcon },
-  { name: "Team", href: "#", icon: UsersIcon },
-  { name: "Projects", href: "#", icon: FolderIcon },
-  { name: "Calendar", href: "#", icon: CalendarIcon },
-  { name: "Documents", href: "#", icon: DocumentDuplicateIcon },
-  { name: "Reports", href: "#", icon: ChartPieIcon },
-];
-const teams = [
-  { id: 1, name: "Heroicons", href: "#", initial: "H" },
-  { id: 2, name: "Tailwind Labs", href: "#", initial: "T" },
-  { id: 3, name: "Workcation", href: "#", initial: "W" },
+  { name: "ZettelTK", href: "/zettel", icon: DocumentDuplicateIcon },
+  { name: "Image Processing", href: "/image-processing", icon: FolderIcon },
+  { name: "Prompt Wizard", href: "/prompt-wizard", icon: ChartPieIcon },
 ];
 
 function classNames(...classes: unknown[]) {
@@ -122,26 +113,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         })}
                       </ul>
                     </li>
-                    <li>
-                      <div className="text-xs/6 font-semibold text-gray-500 dark:text-gray-400">
-                        Your teams
-                      </div>
-                      <ul role="list" className="-mx-2 mt-2 space-y-1">
-                        {teams.map((team) => (
-                          <li key={team.name}>
-                            <a
-                              href={team.href}
-                              className="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
-                            >
-                              <span className="flex size-6 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[0.625rem] font-medium text-gray-600 group-hover:border-gray-300 group-hover:text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:group-hover:border-white/20 dark:group-hover:text-white">
-                                {team.initial}
-                              </span>
-                              <span className="truncate">{team.name}</span>
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
                     <li className="mt-auto">
                       <Link
                         href="/settings"
@@ -203,26 +174,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         </li>
                       );
                     })}
-                  </ul>
-                </li>
-                <li>
-                  <div className="text-xs/6 font-semibold text-gray-500 dark:text-gray-400">
-                    Your teams
-                  </div>
-                  <ul role="list" className="-mx-2 mt-2 space-y-1">
-                    {teams.map((team) => (
-                      <li key={team.name}>
-                        <a
-                          href={team.href}
-                          className="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
-                        >
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[0.625rem] font-medium text-gray-600 group-hover:border-gray-300 group-hover:text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:group-hover:border-white/20 dark:group-hover:text-white">
-                            {team.initial}
-                          </span>
-                          <span className="truncate">{team.name}</span>
-                        </a>
-                      </li>
-                    ))}
                   </ul>
                 </li>
                 <li className="mt-auto">

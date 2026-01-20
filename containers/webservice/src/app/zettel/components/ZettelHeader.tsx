@@ -2,19 +2,20 @@ import { ChevronDownIcon } from "@heroicons/react/16/solid";
 
 const tabs = [
   { name: "Overview", href: "#", current: true },
-  { name: "Status", href: "#", current: false },
-  { name: "Quick Links", href: "#", current: false },
+  { name: "Analysis", href: "#", current: false },
+  { name: "Reports", href: "#", current: false },
+  { name: "Statistics", href: "#", current: false },
 ];
 
 function classNames(...classes: unknown[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function Header() {
+export default function ZettelHeader() {
   return (
     <div className="border-b border-gray-200 pb-5 sm:pb-0 dark:border-white/10 px-4 py-6 sm:px-6">
       <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-        Dashboard
+        ZettelTK - Knowledge Analysis
       </h3>
       <div className="mt-3 sm:mt-4">
         <div className="grid grid-cols-1 sm:hidden">
