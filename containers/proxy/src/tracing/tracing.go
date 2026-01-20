@@ -23,7 +23,7 @@ import (
 	"proxy/telemetry"
 )
 
-// init registers the RequestLogger middleware with Caddy on package load
+// Init registers the RequestLogger middleware with Caddy on package load
 func init() {
 	caddy.RegisterModule(RequestLogger{})
 	httpcaddyfile.RegisterHandlerDirective("request_logger", parseCaddyfile)

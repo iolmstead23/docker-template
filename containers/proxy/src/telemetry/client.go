@@ -31,7 +31,7 @@ type LogRequest struct {
 
 var defaultClient *Client
 
-// init initializes the default telemetry client from environment variables
+// Init initializes the default telemetry client from environment variables
 func init() {
 	// Read telemetry host from environment with default fallback
 	host := os.Getenv("TELEMETRY_HOST")

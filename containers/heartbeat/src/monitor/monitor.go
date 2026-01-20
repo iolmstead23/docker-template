@@ -16,9 +16,9 @@ import (
 
 // Monitor manages health checks for multiple service endpoints
 type Monitor struct {
-	targets   []config.Target          // targets is the list of services to check
-	telemetry *client.TelemetryClient  // telemetry is the client for sending health status logs
-	timeout   time.Duration            // timeout is the HTTP request timeout for health checks
+	targets   []config.Target         // Targets is the list of services to check
+	telemetry *client.TelemetryClient // Telemetry is the client for sending health status logs
+	timeout   time.Duration           // Time out is the HTTP request timeout for health checks
 }
 
 // HealthStatus represents the result of a single service health check

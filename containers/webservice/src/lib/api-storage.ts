@@ -14,6 +14,11 @@ export function createApiStorage(options: ApiStorageOptions): StateStorage {
 
   return {
     getItem: async (name: string): Promise<string | null> => {
+      // Skip API calls during SSR - only fetch on client side
+      if (typeof window === 'undefined') {
+        return null;
+      }
+
       try {
         const response = await fetch(apiEndpoint, {
           method: 'GET',
@@ -34,6 +39,11 @@ export function createApiStorage(options: ApiStorageOptions): StateStorage {
     },
 
     setItem: async (name: string, value: string): Promise<void> => {
+      // Skip API calls during SSR - only save on client side
+      if (typeof window === 'undefined') {
+        return;
+      }
+
       try {
         const data = JSON.parse(value);
         const response = await fetch(apiEndpoint, {
@@ -52,6 +62,11 @@ export function createApiStorage(options: ApiStorageOptions): StateStorage {
     },
 
     removeItem: async (name: string): Promise<void> => {
+      // Skip API calls during SSR - only delete on client side
+      if (typeof window === 'undefined') {
+        return;
+      }
+
       try {
         const response = await fetch(apiEndpoint, {
           method: 'DELETE',

@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { log, getLogIdFromHeaders } from "@/lib/telemetry";
-import Shell from "./components/shell";
+import Header from "./components/header";
+import Body from "./components/body";
 
 async function getServiceStatus() {
   const headersList = headers();
@@ -20,8 +21,13 @@ export default async function Home() {
   const status = await getServiceStatus();
 
   return (
-    <main>
-      <Shell />
-    </main>
+    <div className="lg:pl-72">
+      <Header />
+      <main className="py-10">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <Body />
+        </div>
+      </main>
+    </div>
   );
 }

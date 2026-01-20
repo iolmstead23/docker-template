@@ -5,11 +5,10 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Use .dark class instead of media query to align with Tailwind's class-based dark mode */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {

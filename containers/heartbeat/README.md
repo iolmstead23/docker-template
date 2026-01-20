@@ -28,16 +28,16 @@ The heartbeat service provides centralized health monitoring for the 3EDataToolk
 
 ## Configuration
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `HEARTBEAT_INTERVAL` | Health check interval (seconds) | `15` |
-| `TELEMETRY_HOST` | Telemetry service hostname | `telemetry` |
-| `TELEMETRY_PORT` | Telemetry service port | `8081` |
-| `PROXY_HOST` | Proxy service hostname | `proxy` |
-| `PROXY_PORT` | Proxy service port | `80` |
-| `WEBSERVICE_HOST` | Webservice hostname | `webservice` |
-| `WEBSERVICE_PORT` | Webservice port | `3000` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint | `otel-collector:4318` |
+| Variable                      | Description                     | Default               |
+| ----------------------------- | ------------------------------- | --------------------- |
+| `HEARTBEAT_INTERVAL`          | Health check interval (seconds) | `15`                  |
+| `TELEMETRY_HOST`              | Telemetry service hostname      | `telemetry`           |
+| `TELEMETRY_PORT`              | Telemetry service port          | `8081`                |
+| `PROXY_HOST`                  | Proxy service hostname          | `proxy`               |
+| `PROXY_PORT`                  | Proxy service port              | `80`                  |
+| `WEBSERVICE_HOST`             | Webservice hostname             | `webservice`          |
+| `WEBSERVICE_PORT`             | Webservice port                 | `3000`                |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint         | `otel-collector:4318` |
 
 ## Directory Structure
 

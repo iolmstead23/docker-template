@@ -10,8 +10,8 @@ import (
 
 // TelemetryClient sends log entries to the centralized telemetry service
 type TelemetryClient struct {
-	url    string       // url is the telemetry service /log endpoint
-	client *http.Client // client is the HTTP client with configured timeout
+	url    string       // URL is the telemetry service /log endpoint
+	client *http.Client // Client is the HTTP client with configured timeout
 }
 
 // LogRequest represents a telemetry log entry with correlation ID for distributed tracing

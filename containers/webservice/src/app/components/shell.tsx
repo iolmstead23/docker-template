@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Dialog,
   DialogBackdrop,
@@ -8,6 +10,7 @@ import {
   TransitionChild,
 } from "@headlessui/react";
 import {
+  Bars3Icon,
   CalendarIcon,
   ChartPieIcon,
   Cog6ToothIcon,
@@ -17,42 +20,28 @@ import {
   UsersIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import Header from "./header";
-import Body from "./body";
 
 const navigation = [
-  { name: "Dashboard", href: "#", icon: HomeIcon, current: true },
-  { name: "Team", href: "#", icon: UsersIcon, current: false },
-  { name: "Projects", href: "#", icon: FolderIcon, current: false },
-  { name: "Calendar", href: "#", icon: CalendarIcon, current: false },
-  { name: "Documents", href: "#", icon: DocumentDuplicateIcon, current: false },
-  { name: "Reports", href: "#", icon: ChartPieIcon, current: false },
+  { name: "Dashboard", href: "/", icon: HomeIcon },
+  { name: "Team", href: "#", icon: UsersIcon },
+  { name: "Projects", href: "#", icon: FolderIcon },
+  { name: "Calendar", href: "#", icon: CalendarIcon },
+  { name: "Documents", href: "#", icon: DocumentDuplicateIcon },
+  { name: "Reports", href: "#", icon: ChartPieIcon },
 ];
 const teams = [
-  { id: 1, name: "Heroicons", href: "#", initial: "H", current: false },
-  { id: 2, name: "Tailwind Labs", href: "#", initial: "T", current: false },
-  { id: 3, name: "Workcation", href: "#", initial: "W", current: false },
+  { id: 1, name: "Heroicons", href: "#", initial: "H" },
+  { id: 2, name: "Tailwind Labs", href: "#", initial: "T" },
+  { id: 3, name: "Workcation", href: "#", initial: "W" },
 ];
 
 function classNames(...classes: unknown[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-function Content() {
-  return (
-    <div className="lg:pl-72">
-      <Header />
-      <main className="py-10">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <Body />
-        </div>
-      </main>
-    </div>
-  );
-}
-
-export default function Shell() {
+export default function Shell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <>
@@ -97,7 +86,7 @@ export default function Shell() {
               </TransitionChild>
 
               {/* Sidebar component, swap this element with another sidebar if you like */}
-              <div className="relative flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4 ring-1 ring-white/10 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
+              <div className="relative flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 pb-4 ring-1 ring-gray-200 dark:ring-white/10 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
                 <div className="relative flex h-16 shrink-0 items-center">
                   <img
                     alt="Your Company"
@@ -109,29 +98,32 @@ export default function Shell() {
                   <ul role="list" className="flex flex-1 flex-col gap-y-7">
                     <li>
                       <ul role="list" className="-mx-2 space-y-1">
-                        {navigation.map((item) => (
-                          <li key={item.name}>
-                            <a
-                              href={item.href}
-                              className={classNames(
-                                item.current
-                                  ? "bg-white/5 text-white"
-                                  : "text-gray-400 hover:bg-white/5 hover:text-white",
-                                "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
-                              )}
-                            >
-                              <item.icon
-                                aria-hidden="true"
-                                className="size-6 shrink-0"
-                              />
-                              {item.name}
-                            </a>
-                          </li>
-                        ))}
+                        {navigation.map((item) => {
+                          const isActive = pathname === item.href;
+                          return (
+                            <li key={item.name}>
+                              <Link
+                                href={item.href}
+                                className={classNames(
+                                  isActive
+                                    ? "bg-gray-100 text-gray-900 dark:bg-white/5 dark:text-white"
+                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
+                                  "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
+                                )}
+                              >
+                                <item.icon
+                                  aria-hidden="true"
+                                  className="size-6 shrink-0"
+                                />
+                                {item.name}
+                              </Link>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </li>
                     <li>
-                      <div className="text-xs/6 font-semibold text-gray-400">
+                      <div className="text-xs/6 font-semibold text-gray-500 dark:text-gray-400">
                         Your teams
                       </div>
                       <ul role="list" className="-mx-2 mt-2 space-y-1">
@@ -139,14 +131,9 @@ export default function Shell() {
                           <li key={team.name}>
                             <a
                               href={team.href}
-                              className={classNames(
-                                team.current
-                                  ? "bg-white/5 text-white"
-                                  : "text-gray-400 hover:bg-white/5 hover:text-white",
-                                "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
-                              )}
+                              className="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
                             >
-                              <span className="flex size-6 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-[0.625rem] font-medium text-gray-400 group-hover:border-white/20 group-hover:text-white">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[0.625rem] font-medium text-gray-600 group-hover:border-gray-300 group-hover:text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:group-hover:border-white/20 dark:group-hover:text-white">
                                 {team.initial}
                               </span>
                               <span className="truncate">{team.name}</span>
@@ -156,16 +143,21 @@ export default function Shell() {
                       </ul>
                     </li>
                     <li className="mt-auto">
-                      <a
-                        href="#"
-                        className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-400 hover:bg-white/5 hover:text-white"
+                      <Link
+                        href="/settings"
+                        className={classNames(
+                          pathname === "/settings"
+                            ? "bg-gray-100 text-gray-900 dark:bg-white/5 dark:text-white"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
+                          "group -mx-2 flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
+                        )}
                       >
                         <Cog6ToothIcon
                           aria-hidden="true"
                           className="size-6 shrink-0"
                         />
                         Settings
-                      </a>
+                      </Link>
                     </li>
                   </ul>
                 </nav>
@@ -175,9 +167,9 @@ export default function Shell() {
         </Dialog>
 
         {/* Static sidebar for desktop */}
-        <div className="hidden bg-gray-900 ring-1 ring-white/10 lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+        <div className="hidden bg-white dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-white/10 lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
           {/* Sidebar component, swap this element with another sidebar if you like */}
-          <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-black/10 px-6 pb-4">
+          <div className="flex grow flex-col gap-y-5 overflow-y-auto dark:bg-black/10 px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center">
               <img
                 alt="Your Company"
@@ -189,29 +181,32 @@ export default function Shell() {
               <ul role="list" className="flex flex-1 flex-col gap-y-7">
                 <li>
                   <ul role="list" className="-mx-2 space-y-1">
-                    {navigation.map((item) => (
-                      <li key={item.name}>
-                        <a
-                          href={item.href}
-                          className={classNames(
-                            item.current
-                              ? "bg-white/5 text-white"
-                              : "text-gray-400 hover:bg-white/5 hover:text-white",
-                            "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
-                          )}
-                        >
-                          <item.icon
-                            aria-hidden="true"
-                            className="size-6 shrink-0"
-                          />
-                          {item.name}
-                        </a>
-                      </li>
-                    ))}
+                    {navigation.map((item) => {
+                      const isActive = pathname === item.href;
+                      return (
+                        <li key={item.name}>
+                          <Link
+                            href={item.href}
+                            className={classNames(
+                              isActive
+                                ? "bg-gray-100 text-gray-900 dark:bg-white/5 dark:text-white"
+                                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
+                              "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
+                            )}
+                          >
+                            <item.icon
+                              aria-hidden="true"
+                              className="size-6 shrink-0"
+                            />
+                            {item.name}
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </li>
                 <li>
-                  <div className="text-xs/6 font-semibold text-gray-400">
+                  <div className="text-xs/6 font-semibold text-gray-500 dark:text-gray-400">
                     Your teams
                   </div>
                   <ul role="list" className="-mx-2 mt-2 space-y-1">
@@ -219,14 +214,9 @@ export default function Shell() {
                       <li key={team.name}>
                         <a
                           href={team.href}
-                          className={classNames(
-                            team.current
-                              ? "bg-white/5 text-white"
-                              : "text-gray-400 hover:bg-white/5 hover:text-white",
-                            "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
-                          )}
+                          className="group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
                         >
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-[0.625rem] font-medium text-gray-400 group-hover:border-white/20 group-hover:text-white">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[0.625rem] font-medium text-gray-600 group-hover:border-gray-300 group-hover:text-gray-900 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:group-hover:border-white/20 dark:group-hover:text-white">
                             {team.initial}
                           </span>
                           <span className="truncate">{team.name}</span>
@@ -236,23 +226,43 @@ export default function Shell() {
                   </ul>
                 </li>
                 <li className="mt-auto">
-                  <a
-                    href="#"
-                    className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold text-gray-400 hover:bg-white/5 hover:text-white"
+                  <Link
+                    href="/settings"
+                    className={classNames(
+                      pathname === "/settings"
+                        ? "bg-gray-100 text-gray-900 dark:bg-white/5 dark:text-white"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
+                      "group -mx-2 flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold",
+                    )}
                   >
                     <Cog6ToothIcon
                       aria-hidden="true"
                       className="size-6 shrink-0"
                     />
                     Settings
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </nav>
           </div>
         </div>
 
-        <Content />
+        {/* Mobile menu button */}
+        <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white dark:bg-gray-900 px-4 py-4 shadow-sm sm:px-6 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="-m-2.5 p-2.5 text-gray-700 dark:text-gray-400 lg:hidden"
+          >
+            <span className="sr-only">Open sidebar</span>
+            <Bars3Icon aria-hidden="true" className="size-6" />
+          </button>
+          <div className="flex-1 text-sm/6 font-semibold text-gray-900 dark:text-white">
+            Dashboard
+          </div>
+        </div>
+
+        {children}
       </div>
     </>
   );

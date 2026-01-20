@@ -10,9 +10,9 @@ import (
 
 // Config holds all heartbeat service configuration loaded from environment
 type Config struct {
-	Interval      time.Duration // Interval is how often health checks run (duration in seconds)
-	TelemetryURL  string        // TelemetryURL is the endpoint to send health check logs
-	Targets       []Target      // Targets is the list of services to monitor
+	Interval     time.Duration // Interval is how often health checks run (duration in seconds)
+	TelemetryURL string        // TelemetryURL is the endpoint to send health check logs
+	Targets      []Target      // Targets is the list of services to monitor
 }
 
 // Target represents a single service endpoint to health check

@@ -12,15 +12,15 @@ import (
 
 // RotatingWriter manages log file rotation based on size limits
 type RotatingWriter struct {
-	logPath            string    // logPath is the directory where log files are created
-	maxFileSize        int64     // maxFileSize is the byte limit triggering rotation to a new file
-	sessionID          string    // sessionID uniquely identifies the current log file for correlation
-	currentFile        *os.File  // currentFile is the open file handle being written to
-	currentSize        int64     // currentSize tracks bytes written to current file
+	logPath            string     // logPath is the directory where log files are created
+	maxFileSize        int64      // maxFileSize is the byte limit triggering rotation to a new file
+	sessionID          string     // sessionID uniquely identifies the current log file for correlation
+	currentFile        *os.File   // currentFile is the open file handle being written to
+	currentSize        int64      // currentSize tracks bytes written to current file
 	mu                 sync.Mutex // mu protects concurrent access to file operations
-	writeCounter       int       // writeCounter tracks writes since last validation
-	validationInterval int       // validationInterval is how often to validate file existence
-	currentFileName    string    // currentFileName is the full path to current log file
+	writeCounter       int        // writeCounter tracks writes since last validation
+	validationInterval int        // validationInterval is how often to validate file existence
+	currentFileName    string     // currentFileName is the full path to current log file
 }
 
 // NewRotatingWriter creates a writer that rotates log files at size threshold

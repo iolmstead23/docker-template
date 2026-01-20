@@ -5,27 +5,33 @@ A containerized microservices architecture with comprehensive observability usin
 ## Overview
 
 3EDataToolkit provides a production-ready microservices platform.
-  
+
 ## Architecture
 
 The system consists of 6 containerized services orchestrated via Docker Compose:
 
 ### Telemetry Service (Port 8081)
+
 Centralized logging service with file rotation. Receives logs from all services via HTTP POST endpoint, writes structured logs with timestamps and correlation IDs, and implements automatic file rotation based on configurable size limits.
 
 ### Proxy Service (Port 3000)
+
 Caddy v2.7.6 reverse proxy with custom middleware. Generates unique correlation IDs (X-Log-ID) for each request, implements W3C trace context propagation, and forwards requests to the webservice backend with health check filtering.
 
 ### Heartbeat Service
+
 Health monitoring service that periodically checks all services (default 15s interval). Monitors telemetry, proxy, and webservice endpoints, aggregates health status, and logs results to the centralized telemetry service.
 
 ### Webservice (Port 3000)
+
 Next.js 14.2.35 frontend application with React 18.2.0. Features OpenTelemetry auto-instrumentation, server-side rendering, health monitoring integration, and forwards logs to the centralized telemetry service.
 
 ### OpenTelemetry Collector (Ports 4317, 4318)
+
 OTLP trace aggregation service. Receives traces from all services via gRPC (4317) and HTTP (4318), processes and batches trace data, and exports to Jaeger for visualization.
 
 ### Jaeger (Port 16686)
+
 Distributed tracing visualization UI. Standard all-in-one deployment for viewing and analyzing traces across all services.
 
 ## Network Architecture
@@ -46,27 +52,32 @@ Distributed tracing visualization UI. Standard all-in-one deployment for viewing
 ### Quick Start
 
 1. Clone the repository
+
 ```bash
 git clone https://github.com/iolmstead23/docker-template.git
 cd 3EDataToolkit
 ```
 
 2. Configure environment variables
+
 ```bash
 cp .env.template .env
 ```
 
 3. Build and start all services
+
 ```bash
 docker-compose up --build
 ```
 
 4. Verify deployment
+
 ```bash
 docker-compose ps
 ```
 
 5. Access services
+
 - Web Application: http://localhost:3000
 - Jaeger UI: http://localhost:16686
 - Proxy Status: http://localhost:3000/status
@@ -136,6 +147,7 @@ docker-compose exec telemetry sh
 ### Distributed Tracing
 
 All services export traces to the OpenTelemetry Collector, which forwards to Jaeger:
+
 1. Access Jaeger UI at http://localhost:16686
 2. Select service from dropdown (telemetry, proxy, heartbeat, webservice)
 3. Click "Find Traces" to view request flows
@@ -143,6 +155,7 @@ All services export traces to the OpenTelemetry Collector, which forwards to Jae
 ### Correlation IDs
 
 Each request receives a unique `X-Log-ID` header from the proxy:
+
 - Tracks requests across service boundaries
 - Included in all log entries
 - Visible in Jaeger traces
@@ -150,6 +163,7 @@ Each request receives a unique `X-Log-ID` header from the proxy:
 ### Log Files
 
 Centralized logs stored in `./logs` directory:
+
 - Format: `[timestamp] [level] [log_id] [source] message`
 - Automatic rotation at 1MB (configurable)
 - Persistent across container restarts
@@ -157,6 +171,7 @@ Centralized logs stored in `./logs` directory:
 ## Health Checks
 
 Health check endpoints:
+
 - Proxy: `/status`
 - Webservice: `/api/status`
 - Telemetry: `/status`
