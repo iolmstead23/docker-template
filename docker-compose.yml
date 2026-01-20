@@ -96,10 +96,10 @@ services:
       - WEBSERVICE_PORT=${WEBSERVICE_PORT}
       - TELEMETRY_HOST=${TELEMETRY_HOST}
       - TELEMETRY_PORT=${TELEMETRY_PORT}
-      - STATE_PATH=${STATE_PATH:-/app/state}
+      - STATE_PATH=${STATE_PATH:-/app/appState}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
     volumes:
-      - ./state:${STATE_PATH:-/app/state}
+      - ./appdata:${STATE_PATH:-/app/appState}
     networks:
       - internal
     depends_on:

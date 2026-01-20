@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const STATE_DIR = process.env.STATE_PATH || '/app/state';
+const STATE_DIR = process.env.STATE_PATH || '/app/appState';
 
 export interface StateFile {
   [key: string]: unknown;

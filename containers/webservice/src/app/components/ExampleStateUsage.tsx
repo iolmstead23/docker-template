@@ -126,7 +126,7 @@ export function ExampleStateUsage() {
         <ul className="list-disc list-inside space-y-1 text-sm">
           <li>Changes are automatically saved to backend JSON files via API</li>
           <li>State persists across page reloads and container restarts</li>
-          <li>JSON files are stored in ./state directory for easy access</li>
+          <li>JSON files are stored in ./appdata directory for easy access</li>
           <li>Zustand provides reactive updates to all components</li>
           <li>Custom storage adapter keeps Zustand and JSON in sync</li>
         </ul>

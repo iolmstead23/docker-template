@@ -178,6 +178,12 @@ Health check endpoints:
 
 Heartbeat service monitors all endpoints and reports aggregate health.
 
+## Future Development
+
+- Unit testing for webservice with Playwright
+- Add support for Scalar
+- Add more span events to trace
+
 ## Author
 
 **Third Eye Consulting**

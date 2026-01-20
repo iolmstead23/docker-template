@@ -52,5 +52,5 @@ temp/
 *.tmp
 
 # Other
-state
+appdata
 .prettierrc
