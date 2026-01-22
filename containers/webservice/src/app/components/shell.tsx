@@ -19,6 +19,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
+// Navigation items for sidebar (Settings handled separately at bottom)
 const navigation = [
   { name: "Dashboard", href: "/", icon: HomeIcon },
   { name: "ZettelTK", href: "/zettel", icon: DocumentDuplicateIcon },
@@ -26,12 +27,15 @@ const navigation = [
   { name: "Prompt Wizard", href: "/prompt-wizard", icon: ChartPieIcon },
 ];
 
+// Utility to conditionally join CSS class names (filters out falsy values)
 function classNames(...classes: unknown[]) {
   return classes.filter(Boolean).join(" ");
 }
 
 export default function Shell({ children }: { children: React.ReactNode }) {
+  // Mobile sidebar open/close state (desktop sidebar is always visible)
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Current route path for highlighting active navigation item
   const pathname = usePathname();
 
   return (
@@ -45,21 +49,25 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         ```
       */}
       <div>
+        {/* Mobile sidebar dialog (hidden on desktop via lg:hidden) */}
         <Dialog
           open={sidebarOpen}
           onClose={setSidebarOpen}
           className="relative z-50 lg:hidden"
         >
+          {/* Semi-transparent backdrop overlay */}
           <DialogBackdrop
             transition
             className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear data-closed:opacity-0"
           />
 
           <div className="fixed inset-0 flex">
+            {/* Sidebar panel slides in from left with animation */}
             <DialogPanel
               transition
               className="relative mr-16 flex w-full max-w-xs flex-1 transform transition duration-300 ease-in-out data-closed:-translate-x-full"
             >
+              {/* Close button positioned outside panel on right edge */}
               <TransitionChild>
                 <div className="absolute top-0 left-full flex w-16 justify-center pt-5 duration-300 ease-in-out data-closed:opacity-0">
                   <button
@@ -76,7 +84,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </div>
               </TransitionChild>
 
-              {/* Sidebar component, swap this element with another sidebar if you like */}
+              {/* Mobile sidebar content (mirrors desktop sidebar structure) */}
               <div className="relative flex grow flex-col gap-y-5 overflow-y-auto bg-white dark:bg-gray-900 px-6 pb-4 ring-1 ring-gray-200 dark:ring-white/10 dark:before:pointer-events-none dark:before:absolute dark:before:inset-0 dark:before:bg-black/10">
                 <div className="relative flex h-16 shrink-0 items-center">
                   <img
@@ -90,12 +98,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <li>
                       <ul role="list" className="-mx-2 space-y-1">
                         {navigation.map((item) => {
+                          // Compare current path to item href for active state highlighting
                           const isActive = pathname === item.href;
                           return (
                             <li key={item.name}>
                               <Link
                                 href={item.href}
                                 className={classNames(
+                                  // Active state: highlighted background and text
                                   isActive
                                     ? "bg-gray-100 text-gray-900 dark:bg-white/5 dark:text-white"
                                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
@@ -113,6 +123,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         })}
                       </ul>
                     </li>
+                    {/* Settings link pushed to bottom with mt-auto */}
                     <li className="mt-auto">
                       <Link
                         href="/settings"
@@ -137,9 +148,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </Dialog>
 
-        {/* Static sidebar for desktop */}
+        {/* Static sidebar for desktop (fixed position, always visible on lg+ screens) */}
         <div className="hidden bg-white dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-white/10 lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-          {/* Sidebar component, swap this element with another sidebar if you like */}
           <div className="flex grow flex-col gap-y-5 overflow-y-auto dark:bg-black/10 px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center">
               <img
@@ -153,12 +163,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <li>
                   <ul role="list" className="-mx-2 space-y-1">
                     {navigation.map((item) => {
+                      // Compare current path to item href for active state highlighting
                       const isActive = pathname === item.href;
                       return (
                         <li key={item.name}>
                           <Link
                             href={item.href}
                             className={classNames(
+                              // Active state: highlighted background and text
                               isActive
                                 ? "bg-gray-100 text-gray-900 dark:bg-white/5 dark:text-white"
                                 : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
@@ -176,6 +188,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     })}
                   </ul>
                 </li>
+                {/* Settings link pushed to bottom with mt-auto */}
                 <li className="mt-auto">
                   <Link
                     href="/settings"
@@ -198,7 +211,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Mobile menu button */}
+        {/* Mobile menu button and header (hidden on desktop via lg:hidden) */}
         <div className="sticky top-0 z-40 flex items-center gap-x-6 bg-white dark:bg-gray-900 px-4 py-4 shadow-sm sm:px-6 lg:hidden">
           <button
             type="button"
@@ -213,6 +226,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
+        {/* Page content rendered with left padding on desktop to accommodate fixed sidebar */}
         {children}
       </div>
     </>

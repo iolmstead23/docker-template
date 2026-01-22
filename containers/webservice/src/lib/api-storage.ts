@@ -13,6 +13,8 @@ export function createApiStorage(options: ApiStorageOptions): StateStorage {
   const { apiEndpoint, onError } = options;
 
   return {
+    // Name parameter required by StateStorage interface but unused (API endpoint is pre-configured)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getItem: async (name: string): Promise<string | null> => {
       // Skip API calls during SSR - only fetch on client side
       if (typeof window === 'undefined') {
@@ -38,6 +40,8 @@ export function createApiStorage(options: ApiStorageOptions): StateStorage {
       }
     },
 
+    // Name parameter required by StateStorage interface but unused (API endpoint is pre-configured)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setItem: async (name: string, value: string): Promise<void> => {
       // Skip API calls during SSR - only save on client side
       if (typeof window === 'undefined') {
@@ -61,6 +65,8 @@ export function createApiStorage(options: ApiStorageOptions): StateStorage {
       }
     },
 
+    // Name parameter required by StateStorage interface but unused (API endpoint is pre-configured)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     removeItem: async (name: string): Promise<void> => {
       // Skip API calls during SSR - only delete on client side
       if (typeof window === 'undefined') {

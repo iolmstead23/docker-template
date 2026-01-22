@@ -18,7 +18,8 @@ async function getServiceStatus() {
 }
 
 export default async function ZettelTKPage() {
-  const status = await getServiceStatus();
+  // Log service status for telemetry (return value used for logging side effect)
+  await getServiceStatus();
 
   return (
     <div className="lg:pl-72">

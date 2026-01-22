@@ -52,6 +52,12 @@ class HealthCheckFilterProcessor implements SpanProcessor {
 }
 
 export function register() {
+  // Skip OpenTelemetry initialization if disabled (e.g., in test environments)
+  if (process.env.OTEL_SDK_DISABLED === 'true') {
+    console.log('OpenTelemetry SDK is disabled via OTEL_SDK_DISABLED env var');
+    return;
+  }
+
   // Get OTLP endpoint from environment or use default (full URL with protocol for TypeScript)
   const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4318/v1/traces';
 
@@ -112,8 +118,8 @@ export function register() {
   span.setAttribute('service.name', 'webservice');
   span.end();
 
-  // Force flush to ensure startup span is exported
-  provider.forceFlush();
+  // Force flush to ensure startup span is exported (fire-and-forget)
+  void provider.forceFlush();
 
   console.log('OpenTelemetry SDK initialized for webservice');
 
