@@ -4,8 +4,6 @@ import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { BatchSpanProcessor, SpanProcessor, ReadableSpan, Span } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
 import { trace, Context } from '@opentelemetry/api';
 
 // Custom span processor to filter out health check endpoint traces
@@ -84,33 +82,14 @@ export function register() {
     spanProcessors: [filterProcessor],
   });
 
-  // Register the provider
+  // Register the provider with W3C trace context propagation
   provider.register({
     propagator: new W3CTraceContextPropagator(),
   });
 
-  // Build ignore patterns for internal services using environment variables
-  const telemetryPort = process.env.TELEMETRY_PORT || '8081';
-  const ignorePatterns = [
-    /otel-collector/,                                    // Ignore OTLP exporter requests
-    new RegExp(`telemetry:${telemetryPort}`),           // Ignore telemetry logging requests
-    new RegExp(`localhost:${telemetryPort}`),           // Ignore local telemetry requests
-    /jaeger/,                                            // Ignore Jaeger UI and backend requests
-    /:16686/,                                            // Ignore Jaeger UI port
-    /:4317/,                                             // Ignore Jaeger OTLP gRPC port
-    /:4318/,                                             // Ignore Jaeger OTLP HTTP port
-  ];
-
-  // Register HTTP instrumentation for automatic tracing of HTTP requests
-  registerInstrumentations({
-    instrumentations: [
-      new HttpInstrumentation({
-        ignoreIncomingPaths: ['/api/status', '/status'], // Don't trace health checks
-        // Ignore internal service requests to prevent tracing recursion
-        ignoreOutgoingUrls: ignorePatterns,
-      }),
-    ],
-  });
+  // Note: HttpInstrumentation removed - not compatible with Next.js standalone + nginx
+  // Next.js will automatically create incoming request spans via its built-in instrumentation
+  // Health check filtering still works via HealthCheckFilterProcessor above
 
   // Create test span to verify tracer is working
   const tracer = trace.getTracer('webservice');
