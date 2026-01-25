@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"fmt"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -23,7 +23,16 @@ func (l *Logger) SessionID() string {
 	return l.writer.SessionID()
 }
 
-// Log writes a formatted log entry with timestamp, level, ID, source, and message
+// LogEntry represents a structured log entry in JSONL format
+type LogEntry struct {
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"`
+	LogID     string `json:"log_id"`
+	Source    string `json:"source"`
+	Message   string `json:"message"`
+}
+
+// Log writes a JSONL formatted log entry with timestamp, level, ID, source, and message
 func (l *Logger) Log(level, message, logID, source string) error {
 	// Normalize level to uppercase for consistency
 	level = strings.ToUpper(level)
@@ -42,12 +51,24 @@ func (l *Logger) Log(level, message, logID, source string) error {
 		source = "unknown"
 	}
 
-	// Format log entry with timestamp and structured fields
-	timestamp := time.Now().Format("2006-01-02T15:04:05.000Z07:00")
-	entry := fmt.Sprintf("[%s] [%s] [%s] [%s] %s\n", timestamp, level, logID, source, message)
+	// Create structured log entry
+	entry := LogEntry{
+		Timestamp: time.Now().Format("2006-01-02T15:04:05.000Z07:00"),
+		Level:     level,
+		LogID:     logID,
+		Source:    source,
+		Message:   message,
+	}
 
-	// Write formatted entry to rotating log file
-	_, err := l.writer.Write([]byte(entry))
+	// Marshal to JSON (single line)
+	jsonData, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+
+	// Write JSONL entry (JSON + newline) to rotating log file
+	jsonData = append(jsonData, '\n')
+	_, err = l.writer.Write(jsonData)
 	return err
 }
 
