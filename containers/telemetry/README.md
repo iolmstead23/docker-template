@@ -15,9 +15,9 @@ The telemetry service acts as a centralized log aggregator for all microservices
 
 **HTTP Log Endpoint**: POST /log accepts JSON requests with level, message, log_id, and source fields.
 
-**Structured Log Format**: `[timestamp] [level] [log_id] [source] message`
+**Structured Log Format**: JSONL (JSON Lines) - one JSON object per line with fields: timestamp, level, log_id, source, message. Example: `{"timestamp":"2026-01-24T12:34:56.000Z","level":"INFO","log_id":"test-123","source":"test","message":"Test log"}`
 
-**Log Rotation**: Size-based rotation (default 1MB per file). Files named telemetry.log, telemetry.1.log, etc.
+**Log Rotation**: Size-based rotation (default 1MB per file). Files named with timestamps and session ID: `telemetry-YYYYMMDD-HHMMSS-SESSION.log` (e.g., `telemetry-20260124-123456-a1b2c3d4.log`).
 
 **File Recovery**: Periodic validation (default every 10 writes) with automatic recreation if deleted.
 
@@ -64,7 +64,7 @@ Response: `200 OK`
 
 ### GET /status
 
-Health check endpoint. Response: `200 OK` with body `"OK"`
+Health check endpoint. Response: `200 OK` with JSON body `{"status":"ok","session_id":"..."}`
 
 ## Development
 
@@ -77,8 +77,10 @@ curl -X POST http://localhost:8081/log \
   -H "Content-Type: application/json" \
   -d '{"level":"info","message":"Test","log_id":"test-123","source":"test"}'
 
-# View logs
-cat logs/telemetry.log
+# View logs (use wildcard due to timestamped filenames)
+cat logs/telemetry-*.log
+# or list all log files
+ls -la logs/
 ```
 
 ## Troubleshooting

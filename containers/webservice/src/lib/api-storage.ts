@@ -50,10 +50,33 @@ export function createApiStorage(options: ApiStorageOptions): StateStorage {
 
       try {
         const data = JSON.parse(value);
+
+        // Unwrap Zustand persist middleware structure if present
+        // Zustand wraps state as: { state: {...actualData}, version: 0 }
+        // We need to extract just the actual state data
+        let payloadData = data;
+        if (data && typeof data === 'object') {
+          // If data has 'state' and 'version' properties, it's Zustand's wrapper
+          if ('state' in data && 'version' in data && typeof data.version === 'number') {
+            console.warn('Unwrapping Zustand persist middleware structure');
+            payloadData = data.state;
+          } else {
+            payloadData = data;
+          }
+
+          // Remove lastUpdated if present (should be auto-generated server-side)
+          if (payloadData && typeof payloadData === 'object' && 'lastUpdated' in payloadData) {
+            console.warn('Removed lastUpdated from API request payload (should be auto-generated server-side)');
+            const cleaned = { ...payloadData };
+            delete cleaned.lastUpdated;
+            payloadData = cleaned;
+          }
+        }
+
         const response = await fetch(apiEndpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify(payloadData),
         });
 
         if (!response.ok) {

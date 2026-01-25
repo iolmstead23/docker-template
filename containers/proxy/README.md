@@ -18,7 +18,7 @@ The proxy service provides the public-facing HTTP interface for the 3EDataToolki
 
 **Reverse Proxy**: Routes all requests to webservice backend with transparent header forwarding. Status endpoint at /status returns 200 OK.
 
-**Correlation ID Generation**: Generates unique X-Log-ID header for each request using UUID v4 format. Propagates through entire request chain.
+**Correlation ID Generation**: Generates unique X-Log-ID header for each request using OpenTelemetry trace ID (128-bit hex string). If the request already has an X-Log-ID header, it is preserved. Propagates through entire request chain.
 
 **OpenTelemetry Span Creation**: Creates parent span for each request with W3C Trace Context propagation (traceparent, tracestate headers). Span attributes include HTTP method, path, status code, and correlation ID.
 
@@ -31,7 +31,7 @@ The proxy service provides the public-facing HTTP interface for the 3EDataToolki
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PROXY_PORT` | External HTTP port | `80` |
-| `PROXY_ADMIN_PORT` | Caddy admin API port | `2019` |
+| `PROXY_ADMIN_PORT` | Caddy admin API port (disabled in config) | `2019` |
 | `TELEMETRY_HOST` | Telemetry service hostname | `telemetry` |
 | `TELEMETRY_PORT` | Telemetry service port | `8081` |
 | `WEBSERVICE_HOST` | Backend service hostname | `webservice` |

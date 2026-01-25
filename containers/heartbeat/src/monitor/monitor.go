@@ -10,8 +10,6 @@ import (
 
 	"heartbeat/client"
 	"heartbeat/config"
-
-	"github.com/google/uuid"
 )
 
 // Monitor manages health checks for multiple service endpoints
@@ -93,7 +91,7 @@ func (m *Monitor) checkTarget(target config.Target) HealthStatus {
 }
 
 // LogResults aggregates health check results and logs to telemetry with correlation ID
-func (m *Monitor) LogResults(results []HealthStatus) {
+func (m *Monitor) LogResults(results []HealthStatus, traceID string) {
 	// Separate services into healthy and unhealthy groups for reporting
 	var healthy, unhealthy []string
 
@@ -105,21 +103,18 @@ func (m *Monitor) LogResults(results []HealthStatus) {
 		}
 	}
 
-	// Generate correlation ID for this health check batch
-	healthCheckLogID := uuid.New().String()
-
 	var message string
 	if len(unhealthy) == 0 {
 		message = fmt.Sprintf("All services healthy: %s", strings.Join(healthy, ", "))
-		// Log successful health checks to telemetry with correlation ID
-		if err := m.telemetry.Log("INFO", message, healthCheckLogID); err != nil {
+		// Log successful health checks to telemetry with trace ID for correlation
+		if err := m.telemetry.Log("INFO", message, traceID); err != nil {
 			log.Printf("Failed to send health status to telemetry: %v", err)
 		}
 	} else {
 		message = fmt.Sprintf("Service issues - healthy: [%s], unhealthy: [%s]",
 			strings.Join(healthy, ", "), strings.Join(unhealthy, ", "))
-		// Log health issues to telemetry as warning with correlation ID
-		if err := m.telemetry.Log("WARN", message, healthCheckLogID); err != nil {
+		// Log health issues to telemetry as warning with trace ID for correlation
+		if err := m.telemetry.Log("WARN", message, traceID); err != nil {
 			log.Printf("Failed to send health warning to telemetry: %v", err)
 		}
 	}

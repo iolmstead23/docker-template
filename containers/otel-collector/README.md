@@ -14,31 +14,51 @@ Central trace aggregation point. Receives traces from all services via OTLP prot
 
 ## Key Features
 
-**OTLP Receivers**: gRPC on port 4317, HTTP on port 4318. CORS enabled for HTTP receiver.
+**OTLP Receivers**: gRPC on port 4317, HTTP on port 4318. CORS enabled for HTTP receiver (allows all origins with `allowed_origins: ["*"]`).
 
 **Batch Processing**: Batches traces for efficient export. Timeout 10s, batch size 1024 spans.
 
-**Trace Export**: Exports to Jaeger via OTLP (port 4317) and console logging (debug level).
+**Resource Processing**: Enriches trace data with service attributes (service.name) for better identification in Jaeger.
+
+**Trace Export**: Exports to Jaeger via OTLP (port 4317) with TLS disabled (`insecure: true`) for internal network communication. Also exports to console logging (debug level) for troubleshooting.
 
 ## Configuration
 
-Static configuration file: otel-collector-config.yml. No environment variables required.
+Static configuration file: otel-collector-config.yml.
+
+**Service Environment Variables**: Each service that sends traces to the collector must set `OTEL_EXPORTER_OTLP_ENDPOINT`:
+- Go services (telemetry, heartbeat, proxy): `otel-collector:4318`
+- Webservice (Node.js): `http://otel-collector:4318/v1/traces`
+
+**Jaeger Configuration**: Jaeger service requires `COLLECTOR_OTLP_ENABLED=true` to accept traces from the collector.
 
 ```yaml
 receivers:
   otlp:
     protocols:
-      grpc: 0.0.0.0:4317
-      http: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
 
 processors:
   batch:
     timeout: 10s
     send_batch_size: 1024
+  resource:
+    attributes:
+      - key: service.name
+        action: upsert
+        from_attribute: service.name
 
 exporters:
   otlp:
     endpoint: jaeger:4317
+    tls:
+      insecure: true
   logging:
     loglevel: debug
 

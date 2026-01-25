@@ -16,7 +16,7 @@ The heartbeat service provides centralized health monitoring for the 3EDataToolk
 
 ## Key Features
 
-**Periodic Health Checks**: Configurable interval (default 15 seconds). Checks multiple services simultaneously via HTTP GET requests.
+**Periodic Health Checks**: Configurable interval (default 15 seconds). Checks multiple services sequentially via HTTP GET requests.
 
 **Monitored Services**: Telemetry at http://telemetry:8081/status, Proxy at http://proxy:80/status, Webservice at http://webservice:3000/api/status.
 
@@ -69,13 +69,13 @@ docker-compose build heartbeat
 # View logs
 docker-compose logs -f heartbeat
 
-# Check aggregated health
-docker-compose exec telemetry cat /var/log/telemetry/telemetry.log | grep heartbeat
+# Check aggregated health (note: log files use timestamped names)
+docker-compose exec telemetry cat /var/log/telemetry/telemetry-*.log | grep '"source":"heartbeat"'
 ```
 
 ## Observability
 
-All health check results logged to telemetry service in format: `[timestamp] [level] [log_id] [heartbeat] message`
+All health check results logged to telemetry service in JSONL format with structured fields (timestamp, level, log_id, source, message). The source field will be "heartbeat" for all health check logs.
 
 View traces in Jaeger UI. Each check cycle creates a span showing checked services and results.
 

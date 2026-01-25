@@ -32,6 +32,11 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Log incoming request for debugging (only in development or when errors occur)
+    if (process.env.NODE_ENV === 'development') {
+      await log('debug', `Settings update request: ${JSON.stringify(body)}`, logId);
+    }
+
     // Validate input with Zod schema before processing
     const validatedUpdates = validateApplicationSettingsUpdate(body);
 
@@ -46,7 +51,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     // Handle validation errors with 400 status code
     if (error instanceof ValidationError) {
-      await log('warn', `Invalid application settings input: ${error.message}`, logId);
+      await log('warn', `Invalid application settings input: ${error.message} (field: ${error.field}, value: ${JSON.stringify(error.value)})`, logId);
       return NextResponse.json(
         { error: 'Invalid input', details: error.message, field: error.field },
         { status: 400 }

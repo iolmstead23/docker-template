@@ -12,7 +12,6 @@ import (
 	"heartbeat/config"
 	"heartbeat/monitor"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -114,12 +113,16 @@ func main() {
 	// Create monitor that will check all configured service endpoints
 	mon := monitor.NewMonitor(cfg.Targets, telemetryClient, cfg.Interval)
 
-	// Generate correlation ID for service startup event
-	startupLogID := uuid.New().String()
-	// Log service startup to telemetry with correlation ID
-	if err := telemetryClient.Log("INFO", "Heartbeat service started", startupLogID); err != nil {
+	// Create span for service startup event and use trace ID for correlation
+	tracer := otel.Tracer("heartbeat")
+	_, startupSpan := tracer.Start(ctx, "service-startup-log")
+	startupTraceID := startupSpan.SpanContext().TraceID().String()
+	startupSpan.SetAttributes(attribute.String("log.correlation.id", startupTraceID))
+	// Log service startup to telemetry with trace ID for correlation
+	if err := telemetryClient.Log("INFO", "Heartbeat service started", startupTraceID); err != nil {
 		log.Printf("Failed to send startup log to telemetry: %v", err)
 	}
+	startupSpan.End()
 
 	// Set up graceful shutdown on SIGINT/SIGTERM signals
 	sigChan := make(chan os.Signal, 1)
@@ -138,13 +141,19 @@ func main() {
 		case <-ticker.C:
 			runCheck(mon)
 		case <-sigChan:
-			// Generate correlation ID for shutdown event
-			shutdownLogID := uuid.New().String()
+			// Create span for shutdown event and use trace ID for correlation
+			shutdownTracer := otel.Tracer("heartbeat")
+			shutdownCtx, shutdownSpan := shutdownTracer.Start(context.Background(), "service-shutdown-log")
+			shutdownTraceID := shutdownSpan.SpanContext().TraceID().String()
+			shutdownSpan.SetAttributes(attribute.String("log.correlation.id", shutdownTraceID))
 			log.Println("Shutting down heartbeat service...")
-			// Log shutdown to telemetry with correlation ID
-			if err := telemetryClient.Log("INFO", "Heartbeat service shutting down", shutdownLogID); err != nil {
+			// Log shutdown to telemetry with trace ID for correlation
+			if err := telemetryClient.Log("INFO", "Heartbeat service shutting down", shutdownTraceID); err != nil {
 				log.Printf("Failed to send shutdown log to telemetry: %v", err)
 			}
+			shutdownSpan.End()
+			// Flush tracer to ensure shutdown span is exported
+			tp.ForceFlush(shutdownCtx)
 			return
 		}
 	}
@@ -156,13 +165,13 @@ func runCheck(mon *monitor.Monitor) {
 	ctx, span := tracer.Start(context.Background(), "health-check-batch")
 	defer span.End()
 
-	// Generate correlation ID for this health check batch
-	correlationID := uuid.New().String()
-	span.SetAttributes(attribute.String("log.correlation.id", correlationID))
+	// Use trace ID as correlation ID for log-trace correlation (matches proxy/webservice pattern)
+	traceID := span.SpanContext().TraceID().String()
+	span.SetAttributes(attribute.String("log.correlation.id", traceID))
 
 	log.Println("Running health check...")
 	results := mon.CheckAllWithContext(ctx)
-	mon.LogResults(results)
+	mon.LogResults(results, traceID)
 
 	// Add span attributes and events based on results
 	healthyCount := 0

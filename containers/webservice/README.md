@@ -18,7 +18,7 @@ The webservice provides the user-facing web interface for the 3EDataToolkit plat
 
 **Next.js Application**: Server-side rendering for performance. API routes for backend logic. Static asset serving. Hot reload in development.
 
-**OpenTelemetry Instrumentation**: Automatic HTTP instrumentation. Custom health check filtering. OTLP HTTP trace export. Resource detection for service name and version.
+**OpenTelemetry Instrumentation**: Custom health check filtering to reduce trace volume. OTLP HTTP trace export to collector. Resource detection for service name and version. Note: HTTP instrumentation is disabled due to incompatibility with Next.js standalone mode + nginx.
 
 **Health Check Endpoint**: GET /api/status returns JSON with service status. Excluded from OpenTelemetry tracing.
 
@@ -30,7 +30,9 @@ The webservice provides the user-facing web interface for the 3EDataToolkit plat
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `WEBSERVICE_PORT` | HTTP server port | `3000` |
+| `WEBSERVICE_PORT` | External nginx HTTP port | `3000` |
+| `WEBSERVICE_INTERNAL_PORT` | Internal Next.js port (nginx proxies to this) | `3001` |
+| `STATE_PATH` | Directory for persisting application state | `/app/appState` |
 | `TELEMETRY_HOST` | Telemetry service hostname | `telemetry` |
 | `TELEMETRY_PORT` | Telemetry service port | `8081` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint | `http://otel-collector:4318/v1/traces` |
@@ -62,11 +64,33 @@ containers/webservice/
 
 ### GET /api/status
 
-Health check endpoint. Response: `{"status":"healthy","service":"webservice","timestamp":"2026-01-19T10:30:45Z"}`
+Health check endpoint. Excluded from OpenTelemetry tracing. Response: `{"status":"ok","service":"webservice","timestamp":"2026-01-24T12:34:56.789Z"}`
 
 ### GET /
 
 Home page rendered by Next.js.
+
+### State Management API
+
+**GET /api/state** - List all available state files
+
+**Settings Management:**
+- `GET /api/state/settings` - Read application settings
+- `PUT /api/state/settings` - Update application settings (JSON body)
+- `DELETE /api/state/settings` - Reset settings to defaults
+
+**Preferences Management:**
+- `GET /api/state/preferences` - Read user preferences
+- `PUT /api/state/preferences` - Update user preferences (JSON body)
+- `DELETE /api/state/preferences` - Delete user preferences
+
+**Event History Management:**
+- `GET /api/state/events` - Read event history
+- `POST /api/state/events` - Add event to history (JSON body)
+- `PUT /api/state/events` - Update event history (JSON body with array)
+- `DELETE /api/state/events` - Clear event history
+
+All state data is persisted to the `STATE_PATH` directory and survives container restarts when properly mounted as a volume.
 
 ## Development
 
