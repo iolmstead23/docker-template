@@ -92,7 +92,9 @@ func initTracer() {
 }
 
 // RequestLogger is a Caddy middleware that adds request tracing and telemetry
-type RequestLogger struct{}
+type RequestLogger struct {
+	telemetryClient *telemetry.Client
+}
 
 // CaddyModule returns module metadata for Caddy registration
 func (RequestLogger) CaddyModule() caddy.ModuleInfo {
@@ -102,8 +104,9 @@ func (RequestLogger) CaddyModule() caddy.ModuleInfo {
 	}
 }
 
-// Provision sets up the middleware (no-op for this simple middleware)
+// Provision sets up the middleware and initializes the telemetry client
 func (rl *RequestLogger) Provision(ctx caddy.Context) error {
+	rl.telemetryClient = telemetry.New()
 	return nil
 }
 
@@ -205,7 +208,7 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	}
 
 	// Send request log to telemetry service with trace context
-	telemetry.Log(ctx, level, message, logID)
+	telemetry.Log(rl.telemetryClient, ctx, level, message, logID)
 
 	return err
 }

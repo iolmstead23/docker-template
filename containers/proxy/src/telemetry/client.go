@@ -29,23 +29,17 @@ type LogRequest struct {
 	Source  string `json:"source"`
 }
 
-var defaultClient *Client
-
-// Init initializes the default telemetry client from environment variables
-func init() {
-	// Read telemetry host from environment with default fallback
+// New constructs a Client from environment variables TELEMETRY_HOST and TELEMETRY_PORT
+func New() *Client {
 	host := os.Getenv("TELEMETRY_HOST")
 	if host == "" {
 		host = "telemetry"
 	}
-	// Read telemetry port from environment with default fallback
 	port := os.Getenv("TELEMETRY_PORT")
 	if port == "" {
 		port = "8081"
 	}
-
-	// Create default client with 5-second timeout for telemetry requests
-	defaultClient = &Client{
+	return &Client{
 		url: fmt.Sprintf("http://%s:%s/log", host, port),
 		client: &http.Client{
 			Timeout: 5 * time.Second,
@@ -53,15 +47,9 @@ func init() {
 	}
 }
 
-// Log sends a log entry to telemetry with local fallback on failure
-func Log(ctx context.Context, level, message, logID string) {
-	if defaultClient == nil {
-		// Log locally if telemetry client not initialized
-		log.Printf("[WARN] Telemetry client not initialized, cannot log: %s", message)
-		return
-	}
-	// Attempt to send log to telemetry service, fallback to local logging on failure
-	if err := defaultClient.Log(ctx, level, message, logID); err != nil {
+// Log sends a log entry via c, falling back to local logging on failure
+func Log(c *Client, ctx context.Context, level, message, logID string) {
+	if err := c.Log(ctx, level, message, logID); err != nil {
 		log.Printf("[ERROR] Failed to send telemetry log: %v (original message: %s)", err, message)
 	}
 }
