@@ -12,10 +12,11 @@ Microservices platform with OpenTelemetry tracing and centralized JSONL logging.
 - **Jaeger** - Distributed tracing UI
 
 ## Quick Access
+`Port numbers are set in .env`
 
-- Web Application: http://localhost:3000
+- Web Application: http://localhost:4000
 - Jaeger Traces: http://localhost:16686
-- Logs: `./logs/telemetry-*.log` (JSONL format)
+- Logs: `./logs/telemetry-%YEAR%%MONTH%%DAY%-%HOUR%%MINUTES%%SECONDS%-%RANDOMIZED NUMBER%.log` (JSONL format)
 
 ## Configuration
 
