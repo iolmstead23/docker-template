@@ -16,6 +16,6 @@ WORKDIR /app
 
 COPY --from=builder /build/heartbeat .
 COPY init.sh .
-RUN chmod +x init.sh
+RUN sed -i 's/\r$//' init.sh && chmod +x init.sh
 
 ENTRYPOINT ["./init.sh"]
