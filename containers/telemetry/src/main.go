@@ -126,6 +126,17 @@ func main() {
 	// Log service start event to its own log file
 	appLogger.Log("INFO", "Telemetry service started", "", "telemetry")
 
+	// Start HTTP server and block until error or shutdown
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      nil,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	done := make(chan struct{})
+
 	// Set up signal handler for graceful shutdown on SIGINT/SIGTERM
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -135,19 +146,15 @@ func main() {
 		<-sigChan
 		log.Println("Shutting down telemetry service...")
 		appLogger.Log("INFO", "Telemetry service shutting down", "", "telemetry")
-		writer.Close()
-		os.Exit(0)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		srv.Shutdown(shutdownCtx)
+		close(done)
 	}()
 
-	// Start HTTP server and block until error or shutdown
-	srv := &http.Server{
-		Addr:         addr,
-		Handler:      nil,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-	if err := srv.ListenAndServe(); err != nil {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)
 	}
+
+	<-done
 }
