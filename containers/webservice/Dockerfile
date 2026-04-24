@@ -24,7 +24,7 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN mkdir -p /var/log/nginx /var/run /app/appState
 
 COPY init.sh .
-RUN chmod +x init.sh
+RUN sed -i 's/\r$//' init.sh && chmod +x init.sh
 
 EXPOSE 3000
 

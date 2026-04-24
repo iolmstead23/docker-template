@@ -71,7 +71,7 @@ services:
       - WEBSERVICE_PORT=${WEBSERVICE_PORT}
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
     ports:
-      - "3000:${PROXY_PORT}"
+      - "${PROXY_HOST_PORT}:${PROXY_PORT}"
     networks:
       - internal
       - external

@@ -20,7 +20,7 @@ WORKDIR /app
 COPY --from=builder /build/caddy .
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY init.sh .
-RUN chmod +x init.sh
+RUN sed -i 's/\r$//' init.sh && chmod +x init.sh
 
 EXPOSE 80
 EXPOSE 2019
