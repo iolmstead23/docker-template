@@ -28,13 +28,10 @@ import (
 func init() {
 	caddy.RegisterModule(RequestLogger{})
 	httpcaddyfile.RegisterHandlerDirective("request_logger", parseCaddyfile)
-
-	// Initialize OpenTelemetry tracer
-	initTracer()
 }
 
 // initTracer initializes OpenTelemetry tracer provider for proxy service
-func initTracer() {
+func initTracer() (trace.Tracer, error) {
 	ctx := context.Background()
 
 	// Get OTLP endpoint from environment or use default (host:port only, no protocol)
@@ -49,9 +46,7 @@ func initTracer() {
 		otlptracehttp.WithInsecure(),
 	)
 	if err != nil {
-		// Log error but don't fail - tracing is optional
-		fmt.Fprintf(os.Stderr, "[WARN] Failed to initialize OTLP trace exporter: %v\n", err)
-		return
+		return nil, fmt.Errorf("initialize OTLP trace exporter: %w", err)
 	}
 
 	// Create resource with service name
@@ -62,8 +57,7 @@ func initTracer() {
 		),
 	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WARN] Failed to create tracer resource: %v\n", err)
-		return
+		return nil, fmt.Errorf("create tracer resource: %w", err)
 	}
 
 	// Create tracer provider
@@ -90,11 +84,14 @@ func initTracer() {
 
 	// Force flush to ensure startup span is exported
 	tp.ForceFlush(ctx)
+
+	return tracer, nil
 }
 
 // RequestLogger is a Caddy middleware that adds request tracing and telemetry
 type RequestLogger struct {
 	telemetryClient *telemetry.Client
+	tracer          trace.Tracer
 }
 
 // CaddyModule returns module metadata for Caddy registration
@@ -108,6 +105,11 @@ func (RequestLogger) CaddyModule() caddy.ModuleInfo {
 // Provision sets up the middleware and initializes the telemetry client
 func (rl *RequestLogger) Provision(ctx caddy.Context) error {
 	rl.telemetryClient = telemetry.New()
+	tracer, err := initTracer()
+	if err != nil {
+		return fmt.Errorf("initTracer: %w", err)
+	}
+	rl.tracer = tracer
 	return nil
 }
 
@@ -133,9 +135,8 @@ func shouldSkipLogging(r *http.Request) bool {
 }
 
 // buildRequestSpan sets up trace context, creates span, and resolves log ID
-func buildRequestSpan(r *http.Request) (context.Context, trace.Span, string) {
+func buildRequestSpan(r *http.Request, tracer trace.Tracer) (context.Context, trace.Span, string) {
 	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	tracer := otel.Tracer("proxy")
 	ctx, span := tracer.Start(ctx, "http-request")
 
 	logID := r.Header.Get("X-Log-ID")
@@ -173,7 +174,7 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		return next.ServeHTTP(w, r)
 	}
 
-	ctx, span, logID := buildRequestSpan(r)
+	ctx, span, logID := buildRequestSpan(r, rl.tracer)
 	defer span.End()
 
 	r.Header.Set("X-Log-ID", logID)
