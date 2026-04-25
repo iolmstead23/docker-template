@@ -67,96 +67,101 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	return tp, nil
 }
 
-// main initializes and runs the heartbeat service for continuous health monitoring
-func main() {
-	ctx := context.Background()
-
-	// Initialize OpenTelemetry tracer
+// initTracing initializes OpenTelemetry and returns a cleanup func for deferred shutdown
+func initTracing(ctx context.Context) func() {
 	tp, err := initTracer(ctx)
 	if err != nil {
 		log.Printf("Failed to initialize tracer: %v", err)
-	} else {
-		defer func() {
-			if err := tp.Shutdown(ctx); err != nil {
-				log.Printf("Error shutting down tracer provider: %v", err)
-			}
-		}()
-		log.Println("OpenTelemetry tracer initialized")
-
-		// Create test span to verify tracer is working
-		tracer := otel.Tracer("heartbeat")
-		_, span := tracer.Start(ctx, "service-startup")
-		span.SetAttributes(
-			semconv.ServiceName("heartbeat"),
-		)
-		span.End()
-
-		// Force flush to ensure startup span is exported
-		tp.ForceFlush(ctx)
+		return func() {}
 	}
 
-	// Load configuration from environment variables with sensible defaults
-	cfg := config.Load()
+	log.Println("OpenTelemetry tracer initialized")
+	tracer := otel.Tracer("heartbeat")
+	_, span := tracer.Start(ctx, "service-startup")
+	span.SetAttributes(semconv.ServiceName("heartbeat"))
+	span.End()
+	tp.ForceFlush(ctx)
 
-	// Create telemetry client for sending logs to centralized logging service
+	return func() {
+		if err := tp.Shutdown(ctx); err != nil {
+			log.Printf("Error shutting down tracer provider: %v", err)
+		}
+	}
+}
+
+// setupMonitor loads config, creates telemetry client, and initializes monitor
+func setupMonitor() (*monitor.Monitor, *client.TelemetryClient, time.Duration) {
+	cfg := config.Load()
 	telemetryClient := client.NewTelemetryClient(cfg.TelemetryURL, cfg.Interval)
 
 	log.Printf("Heartbeat service starting")
 	log.Printf("Check interval: %s", cfg.Interval)
 	log.Printf("Telemetry URL: %s", cfg.TelemetryURL)
 	log.Printf("Monitoring %d targets", len(cfg.Targets))
-
 	for _, t := range cfg.Targets {
 		log.Printf("  - %s: %s", t.Name, t.URL)
 	}
 
-	// Create monitor that will check all configured service endpoints
-	mon := monitor.NewMonitor(cfg.Targets, telemetryClient, cfg.Interval)
+	return monitor.NewMonitor(cfg.Targets, telemetryClient, cfg.Interval), telemetryClient, cfg.Interval
+}
 
-	// Create span for service startup event and use trace ID for correlation
+// sendStartupLog creates startup span and logs service startup to telemetry
+func sendStartupLog(ctx context.Context, telemetryClient *client.TelemetryClient) {
 	tracer := otel.Tracer("heartbeat")
 	_, startupSpan := tracer.Start(ctx, "service-startup-log")
 	startupTraceID := startupSpan.SpanContext().TraceID().String()
 	startupSpan.SetAttributes(attribute.String("log.correlation.id", startupTraceID))
-	// Log service startup to telemetry with trace ID for correlation
 	if err := telemetryClient.Log("INFO", "Heartbeat service started", startupTraceID); err != nil {
 		log.Printf("Failed to send startup log to telemetry: %v", err)
 	}
 	startupSpan.End()
+}
 
-	// Set up graceful shutdown on SIGINT/SIGTERM signals
+// sendShutdownLog creates shutdown span and logs service shutdown to telemetry
+func sendShutdownLog(ctx context.Context, telemetryClient *client.TelemetryClient) {
+	tracer := otel.Tracer("heartbeat")
+	shutdownCtx, shutdownSpan := tracer.Start(ctx, "service-shutdown-log")
+	_ = shutdownCtx
+	shutdownTraceID := shutdownSpan.SpanContext().TraceID().String()
+	shutdownSpan.SetAttributes(attribute.String("log.correlation.id", shutdownTraceID))
+	log.Println("Shutting down heartbeat service...")
+	if err := telemetryClient.Log("INFO", "Heartbeat service shutting down", shutdownTraceID); err != nil {
+		log.Printf("Failed to send shutdown log to telemetry: %v", err)
+	}
+	shutdownSpan.End()
+}
+
+// awaitShutdown runs periodic health checks and handles graceful shutdown on signal
+func awaitShutdown(ctx context.Context, mon *monitor.Monitor, telemetryClient *client.TelemetryClient, interval time.Duration) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Create ticker for periodic health checks at configured interval
-	ticker := time.NewTicker(cfg.Interval)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	// Run initial health check before entering main loop
 	runCheck(mon)
 
-	// Main event loop: run checks on ticker or shutdown on signal
 	for {
 		select {
 		case <-ticker.C:
 			runCheck(mon)
 		case <-sigChan:
-			// Create span for shutdown event and use trace ID for correlation
-			shutdownTracer := otel.Tracer("heartbeat")
-			shutdownCtx, shutdownSpan := shutdownTracer.Start(context.Background(), "service-shutdown-log")
-			shutdownTraceID := shutdownSpan.SpanContext().TraceID().String()
-			shutdownSpan.SetAttributes(attribute.String("log.correlation.id", shutdownTraceID))
-			log.Println("Shutting down heartbeat service...")
-			// Log shutdown to telemetry with trace ID for correlation
-			if err := telemetryClient.Log("INFO", "Heartbeat service shutting down", shutdownTraceID); err != nil {
-				log.Printf("Failed to send shutdown log to telemetry: %v", err)
-			}
-			shutdownSpan.End()
-			// Flush tracer to ensure shutdown span is exported
-			tp.ForceFlush(shutdownCtx)
+			sendShutdownLog(ctx, telemetryClient)
 			return
 		}
 	}
+}
+
+// main initializes and runs the heartbeat service for continuous health monitoring
+func main() {
+	ctx := context.Background()
+
+	stopTracing := initTracing(ctx)
+	defer stopTracing()
+
+	mon, telemetryClient, interval := setupMonitor()
+	sendStartupLog(ctx, telemetryClient)
+	awaitShutdown(ctx, mon, telemetryClient, interval)
 }
 
 // runCheck executes health checks on all targets and logs results both locally and to telemetry
