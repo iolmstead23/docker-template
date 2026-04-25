@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"proxy/telemetry"
 )
@@ -115,36 +116,33 @@ func (rl *RequestLogger) Validate() error {
 	return nil
 }
 
-// ServeHTTP handles each request by adding trace ID and logging to telemetry
-func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	// Skip tracing for health check endpoints and Jaeger UI requests
+// shouldSkipTracing evaluates skip conditions for tracing
+func shouldSkipTracing(r *http.Request) bool {
 	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {
-		// Still forward request, but don't create span
-		return next.ServeHTTP(w, r)
+		return true
 	}
+	return r.Host == "jaeger:16686" || r.Host == "localhost:16686"
+}
 
-	// Skip tracing for Jaeger UI requests to prevent them from appearing in traces
-	if r.Host == "jaeger:16686" || r.Host == "localhost:16686" {
-		return next.ServeHTTP(w, r)
+// shouldSkipLogging evaluates skip conditions for logging
+func shouldSkipLogging(r *http.Request) bool {
+	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {
+		return true
 	}
+	return r.Host == "jaeger:16686" || r.Host == "localhost:16686"
+}
 
-	// Extract trace context from incoming request headers
+// buildRequestSpan sets up trace context, creates span, and resolves log ID
+func buildRequestSpan(r *http.Request) (context.Context, trace.Span, string) {
 	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-
-	// Create span with extracted context for distributed tracing
 	tracer := otel.Tracer("proxy")
 	ctx, span := tracer.Start(ctx, "http-request")
-	defer span.End()
 
-	// Extract or generate X-Log-ID header for request correlation
 	logID := r.Header.Get("X-Log-ID")
 	if logID == "" {
-		// Use trace ID as correlation ID if no X-Log-ID provided
-		traceID := span.SpanContext().TraceID().String()
-		logID = traceID
+		logID = span.SpanContext().TraceID().String()
 	}
 
-	// Link correlation ID to span for log-trace correlation
 	span.SetAttributes(
 		attribute.String("log.correlation.id", logID),
 		attribute.String("http.method", r.Method),
@@ -152,30 +150,45 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		attribute.String("http.host", r.Host),
 	)
 
-	// Propagate log ID to both request and response for end-to-end tracing
+	return ctx, span, logID
+}
+
+// dispatchTelemetryLog formats and sends telemetry log to service
+func dispatchTelemetryLog(client *telemetry.Client, ctx context.Context, rw *responseWriter, r *http.Request, logID string, duration time.Duration) {
+	message := fmt.Sprintf("%s %s -> %d (%dms)", r.Method, r.URL.Path, rw.statusCode, duration.Milliseconds())
+
+	level := "INFO"
+	if rw.statusCode >= 500 {
+		level = "ERROR"
+	} else if rw.statusCode >= 400 {
+		level = "WARN"
+	}
+
+	telemetry.Log(client, ctx, level, message, logID)
+}
+
+// ServeHTTP handles each request by adding trace ID and logging to telemetry
+func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
+	if shouldSkipTracing(r) {
+		return next.ServeHTTP(w, r)
+	}
+
+	ctx, span, logID := buildRequestSpan(r)
+	defer span.End()
+
 	r.Header.Set("X-Log-ID", logID)
 	w.Header().Set("X-Log-ID", logID)
-
-	// Record request start time for latency measurement
-	start := time.Now()
-
-	// Wrap response writer to capture status code
-	rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-
-	// Pass request to next handler with span context
 	r = r.WithContext(ctx)
-	err := next.ServeHTTP(rw, r)
 
-	// Calculate request duration for performance monitoring
+	start := time.Now()
+	rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+	err := next.ServeHTTP(rw, r)
 	duration := time.Since(start)
 
-	// Add response details to span
 	span.SetAttributes(
 		attribute.Int("http.status_code", rw.statusCode),
 		attribute.Int64("http.duration_ms", duration.Milliseconds()),
 	)
-
-	// Set span status based on HTTP status code
 	if rw.statusCode >= 500 {
 		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", rw.statusCode))
 	} else if rw.statusCode >= 400 {
@@ -184,31 +197,9 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		span.SetStatus(codes.Ok, "")
 	}
 
-	// Skip logging for health check endpoints and Jaeger UI to reduce log noise
-	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {
-		return err
+	if !shouldSkipLogging(r) {
+		dispatchTelemetryLog(rl.telemetryClient, ctx, rw, r, logID, duration)
 	}
-
-	// Skip logging for Jaeger UI requests
-	if r.Host == "jaeger:16686" || r.Host == "localhost:16686" {
-		return err
-	}
-
-	// Format log message with HTTP method, path, status, and duration
-	message := fmt.Sprintf("%s %s -> %d (%dms)",
-		r.Method, r.URL.Path, rw.statusCode, duration.Milliseconds())
-
-	// Determine log level based on HTTP status code (INFO, WARN, ERROR)
-	level := "INFO"
-	if rw.statusCode >= 400 {
-		level = "WARN"
-	}
-	if rw.statusCode >= 500 {
-		level = "ERROR"
-	}
-
-	// Send request log to telemetry service with trace context
-	telemetry.Log(rl.telemetryClient, ctx, level, message, logID)
 
 	return err
 }
