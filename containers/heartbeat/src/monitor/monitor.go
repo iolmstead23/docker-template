@@ -36,40 +36,33 @@ func NewMonitor(targets []config.Target, telemetry *client.TelemetryClient, time
 	}
 }
 
-// CheckAll runs health checks on all configured targets concurrently
-func (m *Monitor) CheckAll() []HealthStatus {
+// CheckAll runs health checks on all configured targets, propagating ctx to each request.
+func (m *Monitor) CheckAll(ctx context.Context) []HealthStatus {
 	results := make([]HealthStatus, len(m.targets))
 
 	for i, target := range m.targets {
-		results[i] = m.checkTarget(target)
+		results[i] = m.checkTarget(ctx, target)
 	}
 
 	return results
 }
 
-// CheckAllWithContext runs health checks with OpenTelemetry tracing support
-func (m *Monitor) CheckAllWithContext(ctx context.Context) []HealthStatus {
-	results := make([]HealthStatus, len(m.targets))
-
-	for i, target := range m.targets {
-		// Run health check WITHOUT creating span or injecting trace context
-		// Health checks to /status are already logged in telemetry backend
-		results[i] = m.checkTarget(target)
-	}
-
-	return results
-}
-
-// checkTarget performs an HTTP GET health check on a single service
-func (m *Monitor) checkTarget(target config.Target) HealthStatus {
+// checkTarget performs an HTTP GET health check on a single service.
+func (m *Monitor) checkTarget(ctx context.Context, target config.Target) HealthStatus {
 	status := HealthStatus{Name: target.Name}
 
-	// Create dedicated HTTP client with timeout for this check
 	client := &http.Client{Timeout: m.timeout}
 	start := time.Now()
 
-	// Execute health check and measure response latency
-	resp, err := client.Get(target.URL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.URL, nil)
+	if err != nil {
+		status.Healthy = false
+		status.Error = err.Error()
+		status.Latency = time.Since(start)
+		return status
+	}
+
+	resp, err := client.Do(req)
 	status.Latency = time.Since(start)
 
 	if err != nil {
@@ -79,7 +72,6 @@ func (m *Monitor) checkTarget(target config.Target) HealthStatus {
 	}
 	defer resp.Body.Close()
 
-	// Treat 2xx status codes as healthy, anything else as unhealthy
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		status.Healthy = true
 	} else {
