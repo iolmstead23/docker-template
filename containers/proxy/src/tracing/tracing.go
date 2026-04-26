@@ -126,14 +126,6 @@ func shouldSkipTracing(r *http.Request) bool {
 	return r.Host == "jaeger:16686" || r.Host == "localhost:16686"
 }
 
-// shouldSkipLogging evaluates skip conditions for logging
-func shouldSkipLogging(r *http.Request) bool {
-	if r.URL.Path == "/status" || r.URL.Path == "/api/status" {
-		return true
-	}
-	return r.Host == "jaeger:16686" || r.Host == "localhost:16686"
-}
-
 // buildRequestSpan sets up trace context, creates span, and resolves log ID
 func buildRequestSpan(r *http.Request, tracer trace.Tracer) (context.Context, trace.Span, string) {
 	ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
@@ -198,9 +190,7 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		span.SetStatus(codes.Ok, "")
 	}
 
-	if !shouldSkipLogging(r) {
-		dispatchTelemetryLog(rl.telemetryClient, ctx, rw, r, logID, duration)
-	}
+	dispatchTelemetryLog(rl.telemetryClient, ctx, rw, r, logID, duration)
 
 	return err
 }
