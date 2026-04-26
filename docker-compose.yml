@@ -64,7 +64,6 @@ services:
     hostname: ${PROXY_HOST}
     environment:
       - PROXY_PORT=${PROXY_PORT}
-      - PROXY_ADMIN_PORT=${PROXY_ADMIN_PORT}
       - TELEMETRY_HOST=${TELEMETRY_HOST}
       - TELEMETRY_PORT=${TELEMETRY_PORT}
       - WEBSERVICE_HOST=${WEBSERVICE_HOST}
