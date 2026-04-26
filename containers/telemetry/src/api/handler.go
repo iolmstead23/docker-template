@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"telemetry/logger"
@@ -39,6 +40,22 @@ func NewHandler(logger *logger.Logger) *Handler {
 	return &Handler{logger: logger}
 }
 
+// DT-12: decodeLogRequest and validateLogRequest extracted from HandleLog
+func decodeLogRequest(r *http.Request) (*LogRequest, error) {
+	var req LogRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, err
+	}
+	return &req, nil
+}
+
+func validateLogRequest(req *LogRequest) error {
+	if req.Message == "" {
+		return errors.New("message is required")
+	}
+	return nil
+}
+
 // HandleLog receives log entries from services via POST /log
 func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 	// Create span for log request processing
@@ -54,8 +71,8 @@ func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decode JSON log request from request body
-	var req LogRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	req, err := decodeLogRequest(r)
+	if err != nil {
 		span.SetStatus(codes.Error, "invalid request body")
 		h.sendError(w, "invalid request body", http.StatusBadRequest)
 		return
@@ -69,9 +86,9 @@ func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Validate required fields are present in log request
-	if req.Message == "" {
-		span.SetStatus(codes.Error, "message is required")
-		h.sendError(w, "message is required", http.StatusBadRequest)
+	if err := validateLogRequest(req); err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		h.sendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
