@@ -88,6 +88,14 @@ func (rw *RotatingWriter) recreateFile() error {
 	return nil
 }
 
+// recoverMissingFile validates the file exists and recreates it if deleted
+func (rw *RotatingWriter) recoverMissingFile() error {
+	if err := rw.validateFile(); err != nil {
+		return rw.recreateFile()
+	}
+	return nil
+}
+
 // Write appends data to current log file and rotates if size limit exceeded
 func (rw *RotatingWriter) Write(p []byte) (n int, err error) {
 	// Lock for thread-safe file operations
@@ -99,11 +107,8 @@ func (rw *RotatingWriter) Write(p []byte) (n int, err error) {
 
 	// Periodic validation check
 	if rw.writeCounter%rw.validationInterval == 0 {
-		if err := rw.validateFile(); err != nil {
-			// File missing - recreate it
-			if recreateErr := rw.recreateFile(); recreateErr != nil {
-				return 0, fmt.Errorf("validation failed and recreation failed: %w", recreateErr)
-			}
+		if err := rw.recoverMissingFile(); err != nil { // DT-8
+			return 0, err
 		}
 	}
 
