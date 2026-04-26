@@ -31,7 +31,6 @@ The proxy service provides the public-facing HTTP interface for the 3EDataToolki
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PROXY_PORT` | External HTTP port | `80` |
-| `PROXY_ADMIN_PORT` | Caddy admin API port (disabled in config) | `2019` |
 | `TELEMETRY_HOST` | Telemetry service hostname | `telemetry` |
 | `TELEMETRY_PORT` | Telemetry service port | `8081` |
 | `WEBSERVICE_HOST` | Backend service hostname | `webservice` |
