@@ -93,7 +93,7 @@ func (rw *RotatingWriter) recreateDeletedLogFile() error {
 // recoverMissingFile validates the file exists and recreates it if deleted
 func (rw *RotatingWriter) recoverMissingFile() error {
 	if err := rw.checkFileExists(); err != nil {
-		return rw.recreateFile()
+		return rw.recreateDeletedLogFile()
 	}
 	return nil
 }
