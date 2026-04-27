@@ -51,8 +51,9 @@ func (rw *RotatingWriter) SessionID() string {
 	return rw.sessionID
 }
 
-// validateFile checks if the current log file still exists on the filesystem
-func (rw *RotatingWriter) validateFile() error {
+// checkFileExists checks if the current log file still exists on the filesystem
+// DT-31: Renamed from validateFile to clarify that we check existence, not validate content.
+func (rw *RotatingWriter) checkFileExists() error {
 	if _, err := os.Stat(rw.currentFileName); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("log file deleted: %w", err)
@@ -91,8 +92,8 @@ func (rw *RotatingWriter) recreateDeletedLogFile() error {
 
 // recoverMissingFile validates the file exists and recreates it if deleted
 func (rw *RotatingWriter) recoverMissingFile() error {
-	if err := rw.validateFile(); err != nil {
-		return rw.recreateDeletedLogFile()
+	if err := rw.checkFileExists(); err != nil {
+		return rw.recreateFile()
 	}
 	return nil
 }

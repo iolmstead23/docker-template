@@ -176,7 +176,7 @@ func runCheck(mon *monitor.Monitor) {
 	span.SetAttributes(attribute.String("log.correlation.id", traceID))
 
 	log.Println("Running health check...")
-	results := mon.CheckAll(ctx)
+	results := mon.HealthCheckAllTargets(ctx)
 	mon.LogResults(results, traceID)
 
 	// Add span attributes and events based on results
