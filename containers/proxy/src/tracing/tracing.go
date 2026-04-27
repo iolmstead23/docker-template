@@ -35,7 +35,7 @@ func init() {
 func initTracer() (trace.Tracer, error) {
 	ctx := context.Background()
 
-	// Get OTLP endpoint from environment or use default (host:port only, no protocol)
+	// host:port only — OTLPTraceHTTP prepends http:// internally.
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
 		otlpEndpoint = "otel-collector:4318"
