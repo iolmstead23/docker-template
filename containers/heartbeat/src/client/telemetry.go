@@ -24,6 +24,14 @@ type LogRequest struct {
 
 // NewTelemetryClient creates a client for sending logs to telemetry service
 func NewTelemetryClient(url string, timeout time.Duration) *TelemetryClient {
+	// DT-26: Clamp timeout to prevent invalid values
+	const minTimeout = 1 * time.Second
+	const maxTimeout = 60 * time.Second
+	if timeout < minTimeout {
+		timeout = minTimeout
+	} else if timeout > maxTimeout {
+		timeout = maxTimeout
+	}
 	return &TelemetryClient{
 		url: url,
 		client: &http.Client{
