@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 
 	"telemetry/logger"
@@ -40,10 +42,18 @@ func NewHandler(logger *logger.Logger) *Handler {
 	return &Handler{logger: logger}
 }
 
+// DT-23: resolved — io.EOF and *json.SyntaxError return distinct 400 messages
 // DT-12: decodeLogRequest and validateLogRequest extracted from HandleLog
 func decodeLogRequest(r *http.Request) (*LogRequest, error) {
 	var req LogRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, errors.New("empty body")
+		}
+		var syntaxErr *json.SyntaxError
+		if errors.As(err, &syntaxErr) {
+			return nil, fmt.Errorf("malformed JSON at offset %d", syntaxErr.Offset)
+		}
 		return nil, err
 	}
 	return &req, nil
@@ -73,8 +83,8 @@ func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 	// Decode JSON log request from request body
 	req, err := decodeLogRequest(r)
 	if err != nil {
-		span.SetStatus(codes.Error, "invalid request body")
-		h.sendError(w, "invalid request body", http.StatusBadRequest)
+		span.SetStatus(codes.Error, err.Error())
+		h.sendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
