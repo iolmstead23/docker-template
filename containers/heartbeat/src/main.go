@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -112,7 +113,7 @@ func sendStartupLog(ctx context.Context, telemetryClient *client.TelemetryClient
 	startupTraceID := startupSpan.SpanContext().TraceID().String()
 	startupSpan.SetAttributes(attribute.String("log.correlation.id", startupTraceID))
 	if err := telemetryClient.Log("INFO", "Heartbeat service started", startupTraceID); err != nil {
-		log.Printf("Failed to send startup log to telemetry: %v", err)
+		fmt.Fprintf(os.Stderr, "[TELEMETRY UNREACHABLE] Failed to send startup log: %v\n", err)
 	}
 	startupSpan.End()
 }
