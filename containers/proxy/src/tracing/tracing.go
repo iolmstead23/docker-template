@@ -20,6 +20,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 
 	"proxy/telemetry"
 )
@@ -107,7 +108,9 @@ func (rl *RequestLogger) Provision(ctx caddy.Context) error {
 	rl.telemetryClient = telemetry.New()
 	tracer, err := initTracer()
 	if err != nil {
-		return fmt.Errorf("initTracer: %w", err)
+		telemetry.Log(rl.telemetryClient, ctx.Context, "ERROR", fmt.Sprintf("OTLP tracer init failed, continuing with noop tracer: %v", err), "")
+		rl.tracer = noop.NewTracerProvider().Tracer("proxy")
+		return nil
 	}
 	rl.tracer = tracer
 	return nil
