@@ -62,8 +62,9 @@ func (rw *RotatingWriter) validateFile() error {
 	return nil
 }
 
-// recreateFile handles recreation of a deleted log file with the same filename
-func (rw *RotatingWriter) recreateFile() error {
+// recreateDeletedLogFile handles recreation of a deleted log file with the same filename
+// DT-32: Renamed from recreateFile to clarify the specific recovery scenario.
+func (rw *RotatingWriter) recreateDeletedLogFile() error {
 	// Log to stderr (visible in Docker logs, no recursion)
 	fmt.Fprintf(os.Stderr, "[WARN] Log file deleted, recreating: %s (session: %s)\n",
 		rw.currentFileName, rw.sessionID)
@@ -91,7 +92,7 @@ func (rw *RotatingWriter) recreateFile() error {
 // recoverMissingFile validates the file exists and recreates it if deleted
 func (rw *RotatingWriter) recoverMissingFile() error {
 	if err := rw.validateFile(); err != nil {
-		return rw.recreateFile()
+		return rw.recreateDeletedLogFile()
 	}
 	return nil
 }
@@ -123,7 +124,7 @@ func (rw *RotatingWriter) Write(p []byte) (n int, err error) {
 	n, err = rw.currentFile.Write(p)
 	if err != nil {
 		// Write failed - try to recreate once
-		if recreateErr := rw.recreateFile(); recreateErr != nil {
+		if recreateErr := rw.recreateDeletedLogFile(); recreateErr != nil {
 			return n, fmt.Errorf("write failed and recreation failed: %w", recreateErr)
 		}
 		// Retry write after recreation
