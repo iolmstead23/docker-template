@@ -75,7 +75,7 @@ func initTracer() (trace.Tracer, error) {
 		propagation.Baggage{},
 	))
 
-	// Create test span to verify tracer is working
+	// Emit a startup span to confirm the exporter pipeline is live.
 	tracer := otel.Tracer("proxy")
 	_, span := tracer.Start(ctx, "service-startup")
 	span.SetAttributes(
