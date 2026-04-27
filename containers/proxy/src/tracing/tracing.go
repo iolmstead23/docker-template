@@ -169,11 +169,11 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		return next.ServeHTTP(w, r)
 	}
 
-	ctx, span, logID := buildRequestSpan(r, rl.tracer)
+	ctx, span, correlationID := buildRequestSpan(r, rl.tracer)
 	defer span.End()
 
-	r.Header.Set("X-Log-ID", logID)
-	w.Header().Set("X-Log-ID", logID)
+	r.Header.Set("X-Log-ID", correlationID)
+	w.Header().Set("X-Log-ID", correlationID)
 	r = r.WithContext(ctx)
 
 	start := time.Now()
@@ -193,7 +193,8 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 		span.SetStatus(codes.Ok, "")
 	}
 
-	dispatchTelemetryLog(rl.telemetryClient, ctx, rw, r, logID, duration)
+	dispatchTelemetryLog(rl.telemetryClient, ctx, rw, r, correlationID, duration)
+	// DT-33: Renamed logID to correlationID to clarify its role in log-trace correlation.
 
 	return err
 }
