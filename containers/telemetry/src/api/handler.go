@@ -20,6 +20,7 @@ type Handler struct {
 	logger *logger.Logger // logger writes formatted log entries to rotating files
 }
 
+// LogRequest is the JSON body expected by POST /log.
 type LogRequest struct {
 	Level   string `json:"level"`
 	Message string `json:"message"`
