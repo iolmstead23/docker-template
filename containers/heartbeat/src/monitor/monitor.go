@@ -95,26 +95,27 @@ func (m *Monitor) checkTarget(ctx context.Context, target config.Target) HealthS
 // LogResults aggregates health check results and logs to telemetry with correlation ID
 func (m *Monitor) LogResults(results []HealthStatus, traceID string) {
 	// Separate services into healthy and unhealthy groups for reporting
-	var healthy, unhealthy []string
+	var healthyServices, unhealthyServices []string
 
 	for _, r := range results {
 		if r.Healthy {
-			healthy = append(healthy, fmt.Sprintf("%s(%dms)", r.Name, r.Latency.Milliseconds()))
+			healthyServices = append(healthyServices, fmt.Sprintf("%s(%dms)", r.Name, r.Latency.Milliseconds()))
 		} else {
-			unhealthy = append(unhealthy, fmt.Sprintf("%s(%s)", r.Name, r.Error))
+			unhealthyServices = append(unhealthyServices, fmt.Sprintf("%s(%s)", r.Name, r.Error))
 		}
 	}
 
 	var message string
-	if len(unhealthy) == 0 {
-		message = fmt.Sprintf("All services healthy: %s", strings.Join(healthy, ", "))
+	if len(unhealthyServices) == 0 {
+		message = fmt.Sprintf("All services healthy: %s", strings.Join(healthyServices, ", "))
 		// Log successful health checks to telemetry with trace ID for correlation
 		if err := m.telemetry.Log("INFO", message, traceID); err != nil {
 			log.Printf("Failed to send health status to telemetry: %v", err)
 		}
 	} else {
 		message = fmt.Sprintf("Service issues - healthy: [%s], unhealthy: [%s]",
-			strings.Join(healthy, ", "), strings.Join(unhealthy, ", "))
+			strings.Join(healthyServices, ", "), strings.Join(unhealthyServices, ", "))
+		// DT-35: Renamed healthy/unhealthy to healthyServices/unhealthyServices for clarity.
 		// Log health issues to telemetry as warning with trace ID for correlation
 		if err := m.telemetry.Log("WARN", message, traceID); err != nil {
 			log.Printf("Failed to send health warning to telemetry: %v", err)
