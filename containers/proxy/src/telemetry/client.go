@@ -54,7 +54,7 @@ func Log(c *Client, ctx context.Context, level, message, logID string) {
 	}
 }
 
-// Log sends the log request via HTTP POST with distributed tracing support
+// Log submits a structured entry to the centralized telemetry service; attaches the current trace context for correlation.
 func (c *Client) Log(ctx context.Context, level, message, logID string) error {
 	// Create span for telemetry logging request (log requests ARE traced)
 	tracer := otel.Tracer("proxy")
