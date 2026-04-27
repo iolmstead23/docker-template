@@ -42,8 +42,6 @@ func NewHandler(logger *logger.Logger) *Handler {
 	return &Handler{logger: logger}
 }
 
-// DT-23: resolved — io.EOF and *json.SyntaxError return distinct 400 messages
-// DT-12: decodeLogRequest and validateLogRequest extracted from HandleLog
 func decodeLogRequest(r *http.Request) (*LogRequest, error) {
 	var req LogRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -81,7 +79,7 @@ func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Decode JSON log request from request body
-	req, err := decodeLogRequest(r)
+	logRequest, err := decodeLogRequest(r)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		h.sendError(w, err.Error(), http.StatusBadRequest)
@@ -90,20 +88,21 @@ func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 
 	// Add log metadata to span
 	span.SetAttributes(
-		attribute.String("log.level", req.Level),
-		attribute.String("log.source", req.Source),
-		attribute.String("log.correlation.id", req.LogID),
+		attribute.String("log.level", logRequest.Level),
+		attribute.String("log.source", logRequest.Source),
+		attribute.String("log.correlation.id", logRequest.LogID),
 	)
 
 	// Validate required fields are present in log request
-	if err := validateLogRequest(req); err != nil {
+	if err := validateLogRequest(logRequest); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		h.sendError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Write log entry to file system via logger
-	if err := h.logger.Log(req.Level, req.Message, req.LogID, req.Source); err != nil {
+	// DT-34: Renamed req to logRequest to clarify variable type and purpose.
+	if err := h.logger.Log(logRequest.Level, logRequest.Message, logRequest.LogID, logRequest.Source); err != nil {
 		span.SetStatus(codes.Error, "failed to write log")
 		h.sendError(w, "failed to write log", http.StatusInternalServerError)
 		return
