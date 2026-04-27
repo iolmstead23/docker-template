@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"telemetry/logger"
 
@@ -58,7 +59,8 @@ func decodeLogRequest(r *http.Request) (*LogRequest, error) {
 }
 
 func validateLogRequest(req *LogRequest) error {
-	if req.Message == "" {
+	// DT-24: Reject both empty and whitespace-only messages
+	if strings.TrimSpace(req.Message) == "" {
 		return errors.New("message is required")
 	}
 	return nil
