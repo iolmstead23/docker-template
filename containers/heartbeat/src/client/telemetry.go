@@ -55,7 +55,8 @@ func (c *TelemetryClient) Log(level, message, logID string) error {
 	defer resp.Body.Close()
 
 	// Verify telemetry service accepted the log (2xx status codes only)
-	if resp.StatusCode != http.StatusOK {
+	// DT-27: Accept any 2xx response instead of only 200 OK
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("telemetry returned status %d", resp.StatusCode)
 	}
 
