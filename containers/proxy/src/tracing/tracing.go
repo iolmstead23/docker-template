@@ -177,23 +177,23 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	r = r.WithContext(ctx)
 
 	start := time.Now()
-	rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-	err := next.ServeHTTP(rw, r)
+	capturedWriter := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+	err := next.ServeHTTP(capturedWriter, r)
 	duration := time.Since(start)
 
 	span.SetAttributes(
-		attribute.Int("http.status_code", rw.statusCode),
+		attribute.Int("http.status_code", capturedWriter.statusCode),
 		attribute.Int64("http.duration_ms", duration.Milliseconds()),
 	)
-	if rw.statusCode >= 500 {
-		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", rw.statusCode))
-	} else if rw.statusCode >= 400 {
-		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", rw.statusCode))
+	if capturedWriter.statusCode >= 500 {
+		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", capturedWriter.statusCode))
+	} else if capturedWriter.statusCode >= 400 {
+		span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", capturedWriter.statusCode))
 	} else {
 		span.SetStatus(codes.Ok, "")
 	}
-
-	dispatchTelemetryLog(rl.telemetryClient, ctx, rw, r, logID, duration)
+	// DT-36: Renamed rw to capturedWriter to clarify it's a wrapper capturing response behavior.
+	dispatchTelemetryLog(rl.telemetryClient, ctx, capturedWriter, r, logID, duration)
 
 	return err
 }
