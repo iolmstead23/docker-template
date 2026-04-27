@@ -66,7 +66,8 @@ func validateLogRequest(req *LogRequest) error {
 	return nil
 }
 
-// HandleLog receives log entries from services via POST /log
+// HandleLog receives log entries from services via POST /log.
+// Participates in distributed tracing; HandleStatus intentionally does not to reduce overhead. // DT-41: Tracing asymmetry documented on both handlers.
 func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 	// Create span for log request processing
 	tracer := otel.Tracer("telemetry")
@@ -117,8 +118,8 @@ func (h *Handler) HandleLog(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-// HandleStatus returns service health information via GET /status
-// Note: No tracing for health checks to reduce noise
+// HandleStatus returns service health information via GET /status.
+// Does not participate in distributed tracing; HandleLog intentionally does for log-trace correlation.
 func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 	// Only accept GET requests for status checks
 	if r.Method != http.MethodGet {
