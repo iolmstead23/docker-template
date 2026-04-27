@@ -36,8 +36,8 @@ func NewMonitor(targets []config.Target, telemetry *client.TelemetryClient, time
 	}
 }
 
-// CheckAll runs health checks on all configured targets, propagating ctx to each request.
-func (m *Monitor) CheckAll(ctx context.Context) []HealthStatus {
+// HealthCheckAllTargets runs health checks on all configured targets, propagating ctx to each request.
+func (m *Monitor) HealthCheckAllTargets(ctx context.Context) []HealthStatus {
 	results := make([]HealthStatus, len(m.targets))
 
 	for i, target := range m.targets {
