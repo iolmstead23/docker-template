@@ -16,7 +16,7 @@ import (
 type Monitor struct {
 	targets   []config.Target         // Targets is the list of services to check
 	telemetry *client.TelemetryClient // Telemetry is the client for sending health status logs
-	timeout   time.Duration           // Time out is the HTTP request timeout for health checks
+	timeout   time.Duration           // Duration between health checks
 }
 
 // HealthStatus represents the result of a single service health check
@@ -115,7 +115,6 @@ func (m *Monitor) LogResults(results []HealthStatus, traceID string) {
 	} else {
 		message = fmt.Sprintf("Service issues - healthy: [%s], unhealthy: [%s]",
 			strings.Join(healthyServices, ", "), strings.Join(unhealthyServices, ", "))
-		// DT-35: Renamed healthy/unhealthy to healthyServices/unhealthyServices for clarity.
 		// Log health issues to telemetry as warning with trace ID for correlation
 		if err := m.telemetry.Log("WARN", message, traceID); err != nil {
 			log.Printf("Failed to send health warning to telemetry: %v", err)
