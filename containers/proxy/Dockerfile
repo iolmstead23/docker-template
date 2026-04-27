@@ -12,7 +12,8 @@ COPY src/ ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o caddy .
 
-FROM alpine:3.19
+FROM alpine:3.19.1
+# DT-49: Pin Alpine patch version to prevent silent runtime changes
 
 RUN apk add --no-cache ca-certificates
 
