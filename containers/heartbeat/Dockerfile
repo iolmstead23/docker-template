@@ -1,4 +1,5 @@
-FROM golang:alpine AS builder
+FROM golang:1.24.0-alpine AS builder
+# DT-48: Pin Go version to ensure reproducible builds across machines and CI runs
 
 WORKDIR /build
 
