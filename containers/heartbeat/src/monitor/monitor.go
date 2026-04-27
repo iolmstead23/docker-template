@@ -62,7 +62,17 @@ func (m *Monitor) checkTarget(ctx context.Context, target config.Target) HealthS
 		return status
 	}
 
-	resp, err := client.Do(req)
+	var resp *http.Response
+	for attempt := 0; attempt < 2; attempt++ {
+		resp, err = client.Do(req)
+		if err == nil || attempt == 1 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
 	status.Latency = time.Since(start)
 
 	if err != nil {
