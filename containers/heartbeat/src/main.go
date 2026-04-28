@@ -77,7 +77,7 @@ func initTracing(ctx context.Context) func() {
 	}
 
 	log.Println("OpenTelemetry tracer initialized")
-	tracer := otel.Tracer("heartbeat")
+	tracer := tp.Tracer("heartbeat")
 	_, span := tracer.Start(ctx, "service-startup")
 	span.SetAttributes(semconv.ServiceName("heartbeat"))
 	span.End()
