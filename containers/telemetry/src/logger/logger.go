@@ -34,12 +34,8 @@ type LogEntry struct {
 
 // Log writes a JSONL formatted log entry with timestamp, level, ID, source, and message
 func (l *Logger) Log(level, message, logID, source string) error {
-	// Normalize level to uppercase for consistency
+	originalLevel := level
 	level = strings.ToUpper(level)
-	// Validate log level and default to INFO if invalid
-	if !isValidLevel(level) {
-		level = "INFO"
-	}
 
 	// Use hyphen placeholder for empty log IDs
 	if logID == "" {
@@ -49,6 +45,26 @@ func (l *Logger) Log(level, message, logID, source string) error {
 	// Use "unknown" for empty source to aid in debugging misconfigured services
 	if source == "" {
 		source = "unknown"
+	}
+
+	// If log level is invalid, warn about the original value before correcting it
+	if !isValidLevel(level) {
+		warnEntry := LogEntry{
+			Timestamp: time.Now().Format("2006-01-02T15:04:05.000Z07:00"),
+			Level:     "WARN",
+			LogID:     logID,
+			Source:    source,
+			Message:   "Invalid log level: " + originalLevel,
+		}
+		jsonData, err := json.Marshal(warnEntry)
+		if err != nil {
+			return err
+		}
+		jsonData = append(jsonData, '\n')
+		if _, err := l.writer.Write(jsonData); err != nil {
+			return err
+		}
+		level = "INFO"
 	}
 
 	// Create structured log entry
