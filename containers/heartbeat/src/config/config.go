@@ -21,6 +21,15 @@ type Target struct {
 	URL  string
 }
 
+// getEnvOrDefault reads an environment variable and returns its value, or a default if unset.
+func getEnvOrDefault(key, defaultVal string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultVal
+	}
+	return val
+}
+
 // Load reads environment variables and constructs service configuration with defaults
 func Load() *Config {
 	intervalStr := os.Getenv("HEARTBEAT_INTERVAL")
@@ -37,32 +46,12 @@ func Load() *Config {
 		log.Printf("HEARTBEAT_INTERVAL not set, using default %d seconds", interval)
 	}
 
-	telemetryHost := os.Getenv("TELEMETRY_HOST")
-	if telemetryHost == "" {
-		telemetryHost = "telemetry"
-	}
-	telemetryPort := os.Getenv("TELEMETRY_PORT")
-	if telemetryPort == "" {
-		telemetryPort = "8081"
-	}
-
-	proxyHost := os.Getenv("PROXY_HOST")
-	if proxyHost == "" {
-		proxyHost = "proxy"
-	}
-	proxyPort := os.Getenv("PROXY_PORT")
-	if proxyPort == "" {
-		proxyPort = "80"
-	}
-
-	webserviceHost := os.Getenv("WEBSERVICE_HOST")
-	if webserviceHost == "" {
-		webserviceHost = "webservice"
-	}
-	webservicePort := os.Getenv("WEBSERVICE_PORT")
-	if webservicePort == "" {
-		webservicePort = "3000"
-	}
+	telemetryHost := getEnvOrDefault("TELEMETRY_HOST", "telemetry")
+	telemetryPort := getEnvOrDefault("TELEMETRY_PORT", "8081")
+	proxyHost := getEnvOrDefault("PROXY_HOST", "proxy")
+	proxyPort := getEnvOrDefault("PROXY_PORT", "80")
+	webserviceHost := getEnvOrDefault("WEBSERVICE_HOST", "webservice")
+	webservicePort := getEnvOrDefault("WEBSERVICE_PORT", "3000")
 
 	// Build list of service targets to monitor from environment configuration
 	targets := []Target{
