@@ -10,9 +10,10 @@ import (
 
 // Config holds all heartbeat service configuration loaded from environment
 type Config struct {
-	Interval     time.Duration // Interval is how often health checks run (duration in seconds)
-	TelemetryURL string        // TelemetryURL is the endpoint to send health check logs
-	Targets      []Target      // Targets is the list of services to monitor
+	Interval         time.Duration
+	TelemetryURL     string
+	TelemetryTimeout time.Duration
+	Targets          []Target
 }
 
 // Target represents a single service endpoint to health check
@@ -33,13 +34,12 @@ func getEnvOrDefault(key, defaultVal string) string {
 // Load reads environment variables and constructs service configuration with defaults
 func Load() *Config {
 	intervalStr := os.Getenv("HEARTBEAT_INTERVAL")
-	interval := 15 // Default check interval in seconds
+	interval := 15
 	if intervalStr != "" {
 		if parsed, err := strconv.Atoi(intervalStr); err == nil {
 			interval = parsed
 			log.Printf("Using configured heartbeat interval: %d seconds", interval)
 		} else {
-			// Log parsing failure so operators know config was ignored
 			log.Printf("Invalid HEARTBEAT_INTERVAL '%s', using default %d seconds: %v", intervalStr, interval, err)
 		}
 	} else {
@@ -53,7 +53,13 @@ func Load() *Config {
 	webserviceHost := getEnvOrDefault("WEBSERVICE_HOST", "webservice")
 	webservicePort := getEnvOrDefault("WEBSERVICE_PORT", "3000")
 
-	// Build list of service targets to monitor from environment configuration
+	telemetryTimeoutStr := getEnvOrDefault("TELEMETRY_TIMEOUT", "5s")
+	telemetryTimeout, err := time.ParseDuration(telemetryTimeoutStr)
+	if err != nil {
+		log.Printf("Invalid TELEMETRY_TIMEOUT '%s', using default 5s: %v", telemetryTimeoutStr, err)
+		telemetryTimeout = 5 * time.Second
+	}
+
 	targets := []Target{
 		{
 			Name: "telemetry",
@@ -69,10 +75,10 @@ func Load() *Config {
 		},
 	}
 
-	// Return fully configured heartbeat service settings
 	return &Config{
-		Interval:     time.Duration(interval) * time.Second,
-		TelemetryURL: fmt.Sprintf("http://%s:%s/log", telemetryHost, telemetryPort),
-		Targets:      targets,
+		Interval:         time.Duration(interval) * time.Second,
+		TelemetryURL:     fmt.Sprintf("http://%s:%s/log", telemetryHost, telemetryPort),
+		TelemetryTimeout: telemetryTimeout,
+		Targets:          targets,
 	}
 }

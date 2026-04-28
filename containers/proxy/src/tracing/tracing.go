@@ -25,6 +25,26 @@ import (
 	"proxy/telemetry"
 )
 
+// RequestLogger is a Caddy middleware that adds request tracing and telemetry
+type RequestLogger struct {
+	telemetryClient *telemetry.Client
+	tracer          trace.Tracer
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+// Global variable compliance checks for Caddy interface implementations
+var (
+	_ caddy.Provisioner           = (*RequestLogger)(nil)
+	_ caddy.Validator             = (*RequestLogger)(nil)
+	_ caddyhttp.MiddlewareHandler = (*RequestLogger)(nil)
+	_ caddyfile.Unmarshaler       = (*RequestLogger)(nil)
+)
+
 // Init registers the RequestLogger middleware with Caddy on package load
 func init() {
 	caddy.RegisterModule(RequestLogger{})
@@ -35,13 +55,11 @@ func init() {
 func initTracer() (trace.Tracer, error) {
 	ctx := context.Background()
 
-	// host:port only — OTLPTraceHTTP prepends http:// internally.
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
 		otlpEndpoint = "otel-collector:4318"
 	}
 
-	// Create OTLP trace exporter using HTTP protocol
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(otlpEndpoint),
 		otlptracehttp.WithInsecure(),
@@ -50,7 +68,6 @@ func initTracer() (trace.Tracer, error) {
 		return nil, fmt.Errorf("initialize OTLP trace exporter: %w", err)
 	}
 
-	// Create resource with service name
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName("proxy"),
@@ -61,7 +78,6 @@ func initTracer() (trace.Tracer, error) {
 		return nil, fmt.Errorf("create tracer resource: %w", err)
 	}
 
-	// Create tracer provider
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
@@ -69,13 +85,11 @@ func initTracer() (trace.Tracer, error) {
 
 	otel.SetTracerProvider(tp)
 
-	// Configure trace context propagation for distributed tracing
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
 
-	// Emit a startup span to confirm the exporter pipeline is live.
 	tracer := otel.Tracer("proxy")
 	_, span := tracer.Start(ctx, "service-startup")
 	span.SetAttributes(
@@ -83,16 +97,9 @@ func initTracer() (trace.Tracer, error) {
 	)
 	span.End()
 
-	// Force flush to ensure startup span is exported
 	tp.ForceFlush(ctx)
 
 	return tracer, nil
-}
-
-// RequestLogger is a Caddy middleware that adds request tracing and telemetry
-type RequestLogger struct {
-	telemetryClient *telemetry.Client
-	tracer          trace.Tracer
 }
 
 // CaddyModule returns module metadata for Caddy registration
@@ -194,15 +201,8 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request, next c
 	}
 
 	dispatchTelemetryLog(rl.telemetryClient, ctx, capturedWriter, r, correlationID, duration)
-	// DT-33: Renamed logID to correlationID to clarify its role in log-trace correlation.
 
 	return err
-}
-
-// responseWriter wraps http.ResponseWriter to capture status code
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
 }
 
 // WriteHeader captures status code before forwarding to underlying writer
@@ -227,11 +227,3 @@ func (rl *RequestLogger) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	}
 	return nil
 }
-
-// Compile-time interface compliance checks for Caddy integration
-var (
-	_ caddy.Provisioner           = (*RequestLogger)(nil)
-	_ caddy.Validator             = (*RequestLogger)(nil)
-	_ caddyhttp.MiddlewareHandler = (*RequestLogger)(nil)
-	_ caddyfile.Unmarshaler       = (*RequestLogger)(nil)
-)

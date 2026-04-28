@@ -17,8 +17,8 @@ import (
 
 // Client sends log entries to the centralized telemetry service
 type Client struct {
-	url    string       // url is the telemetry service /log endpoint
-	client *http.Client // client is the HTTP client with configured timeout
+	url    string
+	client *http.Client
 }
 
 // LogRequest represents a telemetry log entry with correlation ID for distributed tracing
@@ -78,9 +78,8 @@ func Log(c *Client, ctx context.Context, level, message, logID string) {
 	}
 }
 
-// Log submits a structured entry to the centralized telemetry service; attaches the current trace context for correlation.
+// Log submits a structured entry to the centralized telemetry service; attaches the current trace context for correlation
 func (c *Client) Log(ctx context.Context, level, message, logID string) error {
-	// Create span for telemetry logging request (log requests ARE traced)
 	tracer := otel.Tracer("proxy")
 	ctx, span := tracer.Start(ctx, "telemetry-log")
 	defer span.End()
@@ -111,8 +110,6 @@ func (c *Client) Log(ctx context.Context, level, message, logID string) error {
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-
-	// Inject trace context into request headers for distributed tracing
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(httpReq.Header))
 
 	resp, err := c.client.Do(httpReq)
@@ -122,7 +119,6 @@ func (c *Client) Log(ctx context.Context, level, message, logID string) error {
 	}
 	defer resp.Body.Close()
 
-	// Check HTTP status code to ensure telemetry service accepted the log
 	if resp.StatusCode != http.StatusOK {
 		err := fmt.Errorf("telemetry service returned status %d", resp.StatusCode)
 		span.RecordError(err)

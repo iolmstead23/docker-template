@@ -25,13 +25,11 @@ import (
 
 // initTracer initializes OpenTelemetry tracer provider
 func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	// host:port only — OTLPTraceHTTP prepends http:// internally.
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
 		otlpEndpoint = "otel-collector:4318"
 	}
 
-	// Create OTLP trace exporter using HTTP protocol
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(otlpEndpoint),
 		otlptracehttp.WithInsecure(),
@@ -40,7 +38,6 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		return nil, err
 	}
 
-	// Create resource with service name
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName("heartbeat"),
@@ -51,7 +48,6 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		return nil, err
 	}
 
-	// Create tracer provider
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
@@ -59,7 +55,6 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 
 	otel.SetTracerProvider(tp)
 
-	// Configure trace context propagation for distributed tracing
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
@@ -103,7 +98,7 @@ func setupMonitor() (*monitor.Monitor, *client.TelemetryClient, time.Duration) {
 		log.Printf("  - %s: %s", t.Name, t.URL)
 	}
 
-	return monitor.NewMonitor(cfg.Targets, telemetryClient, cfg.Interval), telemetryClient, cfg.Interval
+	return monitor.NewMonitor(cfg.Targets, telemetryClient, cfg.TelemetryTimeout), telemetryClient, cfg.Interval
 }
 
 // sendStartupLog creates startup span and logs service startup to telemetry
@@ -121,8 +116,7 @@ func sendStartupLog(ctx context.Context, telemetryClient *client.TelemetryClient
 // sendShutdownLog creates shutdown span and logs service shutdown to telemetry
 func sendShutdownLog(ctx context.Context, telemetryClient *client.TelemetryClient) {
 	tracer := otel.Tracer("heartbeat")
-	shutdownCtx, shutdownSpan := tracer.Start(ctx, "service-shutdown-log")
-	_ = shutdownCtx
+	_, shutdownSpan := tracer.Start(ctx, "service-shutdown-log")
 	shutdownTraceID := shutdownSpan.SpanContext().TraceID().String()
 	shutdownSpan.SetAttributes(attribute.String("log.correlation.id", shutdownTraceID))
 	log.Println("Shutting down heartbeat service...")
@@ -170,7 +164,6 @@ func runCheck(mon *monitor.Monitor, tracer trace.Tracer) {
 	ctx, span := tracer.Start(context.Background(), "health-check-batch")
 	defer span.End()
 
-	// Use trace ID as correlation ID for log-trace correlation (matches proxy/webservice pattern)
 	traceID := span.SpanContext().TraceID().String()
 	span.SetAttributes(attribute.String("log.correlation.id", traceID))
 
@@ -178,14 +171,12 @@ func runCheck(mon *monitor.Monitor, tracer trace.Tracer) {
 	results := mon.HealthCheckAllTargets(ctx)
 	mon.LogResults(results, traceID)
 
-	// Add span attributes and events based on results
 	healthyCount := 0
 	unhealthyCount := 0
 	for _, r := range results {
 		if r.Healthy {
 			healthyCount++
 			log.Printf("  [OK] %s (%dms)", r.Name, r.Latency.Milliseconds())
-			// Record health check result as span event
 			span.AddEvent("health-check-success", trace.WithAttributes(
 				attribute.String("service.name", r.Name),
 				attribute.Int64("latency_ms", r.Latency.Milliseconds()),
@@ -193,7 +184,6 @@ func runCheck(mon *monitor.Monitor, tracer trace.Tracer) {
 		} else {
 			unhealthyCount++
 			log.Printf("  [FAIL] %s: %s", r.Name, r.Error)
-			// Record health check result as span event
 			span.AddEvent("health-check-failed", trace.WithAttributes(
 				attribute.String("service.name", r.Name),
 				attribute.String("error", r.Error),

@@ -14,9 +14,9 @@ import (
 
 // Monitor manages health checks for multiple service endpoints
 type Monitor struct {
-	targets   []config.Target         // Targets is the list of services to check
-	telemetry *client.TelemetryClient // Telemetry is the client for sending health status logs
-	timeout   time.Duration           // Duration between health checks
+	targets   []config.Target
+	telemetry *client.TelemetryClient
+	timeout   time.Duration
 }
 
 // HealthStatus represents the result of a single service health check
@@ -54,7 +54,7 @@ func (m *Monitor) HealthCheckAllTargets(ctx context.Context) []HealthStatus {
 func (m *Monitor) checkTarget(ctx context.Context, target config.Target) HealthStatus {
 	status := HealthStatus{Name: target.Name}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: m.timeout}
 	start := time.Now()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.URL, nil)
@@ -66,7 +66,7 @@ func (m *Monitor) checkTarget(ctx context.Context, target config.Target) HealthS
 	}
 
 	var resp *http.Response
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		resp, err = client.Do(req)
 		if err == nil || attempt == 1 {
 			break
@@ -97,7 +97,6 @@ func (m *Monitor) checkTarget(ctx context.Context, target config.Target) HealthS
 
 // LogResults aggregates health check results and logs to telemetry with correlation ID
 func (m *Monitor) LogResults(results []HealthStatus, traceID string) {
-	// Separate services into healthy and unhealthy groups for reporting
 	var healthyServices, unhealthyServices []string
 
 	for _, r := range results {
@@ -111,14 +110,12 @@ func (m *Monitor) LogResults(results []HealthStatus, traceID string) {
 	var message string
 	if len(unhealthyServices) == 0 {
 		message = fmt.Sprintf("All services healthy: %s", strings.Join(healthyServices, ", "))
-		// Log successful health checks to telemetry with trace ID for correlation
 		if err := m.telemetry.Log("INFO", message, traceID); err != nil {
 			log.Printf("Failed to send health status to telemetry: %v", err)
 		}
 	} else {
 		message = fmt.Sprintf("Service issues - healthy: [%s], unhealthy: [%s]",
 			strings.Join(healthyServices, ", "), strings.Join(unhealthyServices, ", "))
-		// Log health issues to telemetry as warning with trace ID for correlation
 		if err := m.telemetry.Log("WARN", message, traceID); err != nil {
 			log.Printf("Failed to send health warning to telemetry: %v", err)
 		}
