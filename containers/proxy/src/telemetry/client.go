@@ -31,7 +31,8 @@ type LogRequest struct {
 
 // clientConfig holds telemetry service connection configuration
 type clientConfig struct {
-	url string
+	url     string
+	timeout time.Duration
 }
 
 // loadClientConfig reads environment variables and constructs telemetry configuration
@@ -44,18 +45,28 @@ func loadClientConfig() clientConfig {
 	if port == "" {
 		port = "8081"
 	}
+	timeoutStr := os.Getenv("TELEMETRY_TIMEOUT")
+	if timeoutStr == "" {
+		timeoutStr = "5s"
+	}
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		log.Printf("Invalid TELEMETRY_TIMEOUT %q, using default 5s: %v", timeoutStr, err)
+		timeout = 5 * time.Second
+	}
 	return clientConfig{
-		url: fmt.Sprintf("http://%s:%s/log", host, port),
+		url:     fmt.Sprintf("http://%s:%s/log", host, port),
+		timeout: timeout,
 	}
 }
 
-// New constructs a Client from environment variables TELEMETRY_HOST and TELEMETRY_PORT
+// New constructs a Client from environment variables TELEMETRY_HOST, TELEMETRY_PORT, and TELEMETRY_TIMEOUT
 func New() *Client {
 	cfg := loadClientConfig()
 	return &Client{
 		url: cfg.url,
 		client: &http.Client{
-			Timeout: 5 * time.Second,
+			Timeout: cfg.timeout,
 		},
 	}
 }
