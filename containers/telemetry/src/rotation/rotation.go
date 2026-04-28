@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ type RotatingWriter struct {
 	writeCounter       int        // writeCounter tracks writes since last validation
 	validationInterval int        // validationInterval is how often to validate file existence
 	currentFileName    string     // currentFileName is the full path to current log file
+	currentInode       uint64     // currentInode is the inode of the open log file
 }
 
 // NewRotatingWriter creates a writer that rotates log files at size threshold
@@ -54,11 +56,15 @@ func (rw *RotatingWriter) SessionID() string {
 // checkFileExists checks if the current log file still exists on the filesystem
 // DT-31: Renamed from validateFile to clarify that we check existence, not validate content.
 func (rw *RotatingWriter) checkFileExists() error {
-	if _, err := os.Stat(rw.currentFileName); err != nil {
+	info, err := os.Stat(rw.currentFileName)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("log file deleted: %w", err)
 		}
 		return fmt.Errorf("failed to stat log file: %w", err)
+	}
+	if info.Sys().(*syscall.Stat_t).Ino != rw.currentInode {
+		return fmt.Errorf("log file replaced: inode changed")
 	}
 	return nil
 }
@@ -82,10 +88,15 @@ func (rw *RotatingWriter) recreateDeletedLogFile() error {
 		return fmt.Errorf("failed to recreate log file: %w", err)
 	}
 
-	// Update state
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return fmt.Errorf("failed to stat recreated log file: %w", err)
+	}
 	rw.currentFile = file
 	rw.currentSize = 0  // Reset - file is empty
 	rw.writeCounter = 0 // Reset validation counter
+	rw.currentInode = info.Sys().(*syscall.Stat_t).Ino
 
 	return nil
 }
@@ -167,11 +178,16 @@ func (rw *RotatingWriter) openNewFile() error {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}
 
-	// Set as current file and reset size counter
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return fmt.Errorf("failed to stat new log file: %w", err)
+	}
 	rw.currentFile = file
 	rw.currentSize = 0
 	// Store full file path for validation
 	rw.currentFileName = filePath
+	rw.currentInode = info.Sys().(*syscall.Stat_t).Ino
 	return nil
 }
 
