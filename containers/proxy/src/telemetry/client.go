@@ -29,8 +29,13 @@ type LogRequest struct {
 	Source  string `json:"source"`
 }
 
-// New constructs a Client from environment variables TELEMETRY_HOST and TELEMETRY_PORT
-func New() *Client {
+// clientConfig holds telemetry service connection configuration
+type clientConfig struct {
+	url string
+}
+
+// loadClientConfig reads environment variables and constructs telemetry configuration
+func loadClientConfig() clientConfig {
 	host := os.Getenv("TELEMETRY_HOST")
 	if host == "" {
 		host = "telemetry"
@@ -39,8 +44,16 @@ func New() *Client {
 	if port == "" {
 		port = "8081"
 	}
-	return &Client{
+	return clientConfig{
 		url: fmt.Sprintf("http://%s:%s/log", host, port),
+	}
+}
+
+// New constructs a Client from environment variables TELEMETRY_HOST and TELEMETRY_PORT
+func New() *Client {
+	cfg := loadClientConfig()
+	return &Client{
+		url: cfg.url,
 		client: &http.Client{
 			Timeout: 5 * time.Second,
 		},
