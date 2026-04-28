@@ -29,6 +29,9 @@ type HealthStatus struct {
 
 // NewMonitor creates a monitor for checking multiple service endpoints
 func NewMonitor(targets []config.Target, telemetry *client.TelemetryClient, timeout time.Duration) *Monitor {
+	if len(targets) == 0 {
+		log.Printf("WARN: Monitor created with no targets; health checks will not run")
+	}
 	return &Monitor{
 		targets:   targets,
 		telemetry: telemetry,
