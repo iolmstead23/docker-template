@@ -10,18 +10,17 @@ import (
 	"github.com/google/uuid"
 )
 
-// RotatingWriter manages log file rotation based on size limits
 type RotatingWriter struct {
-	logPath            string     // logPath is the directory where log files are created
-	maxFileSize        int64      // maxFileSize is the byte limit triggering rotation to a new file
-	sessionID          string     // sessionID uniquely identifies the current log file for correlation
-	currentFile        *os.File   // currentFile is the open file handle being written to
-	currentSize        int64      // currentSize tracks bytes written to current file
-	mu                 sync.Mutex // mu protects concurrent access to file operations
-	writeCounter       int        // writeCounter tracks writes since last validation
-	validationInterval int        // validationInterval is how often to validate file existence
-	currentFileName    string     // currentFileName is the full path to current log file
-	currentInode       uint64     // currentInode is the inode of the open log file
+	logPath            string
+	maxFileSize        int64
+	sessionID          string
+	currentFile        *os.File
+	currentSize        int64
+	mu                 sync.Mutex
+	writeCounter       int
+	validationInterval int
+	currentFileName    string
+	currentInode       uint64
 }
 
 // NewRotatingWriter creates a writer that rotates log files at size threshold
@@ -29,17 +28,15 @@ func NewRotatingWriter(logPath string, maxFileSize int64, validationInterval int
 	rw := &RotatingWriter{
 		logPath:            logPath,
 		maxFileSize:        maxFileSize,
-		sessionID:          uuid.New().String(), // Generate unique session ID for this log file
+		sessionID:          uuid.New().String(),
 		writeCounter:       0,
 		validationInterval: validationInterval,
 	}
 
-	// Ensure log directory exists before creating files
 	if err := os.MkdirAll(logPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	// Open the initial log file for writing
 	if err := rw.openNewFile(); err != nil {
 		return nil, err
 	}
@@ -53,7 +50,6 @@ func (rw *RotatingWriter) SessionID() string {
 }
 
 // checkFileExists checks if the current log file still exists on the filesystem
-// DT-31: Renamed from validateFile to clarify that we check existence, not validate content.
 func (rw *RotatingWriter) checkFileExists() error {
 	info, err := os.Stat(rw.currentFileName)
 	if err != nil {
@@ -69,18 +65,14 @@ func (rw *RotatingWriter) checkFileExists() error {
 }
 
 // recreateDeletedLogFile handles recreation of a deleted log file with the same filename
-// DT-32: Renamed from recreateFile to clarify the specific recovery scenario.
 func (rw *RotatingWriter) recreateDeletedLogFile() error {
-	// Log to stderr (visible in Docker logs, no recursion)
 	fmt.Fprintf(os.Stderr, "[WARN] Log file deleted, recreating: %s (session: %s)\n",
 		rw.currentFileName, rw.sessionID)
 
-	// Close orphaned handle
 	if rw.currentFile != nil {
 		rw.currentFile.Close()
 	}
 
-	// Recreate with SAME filename (preserves session continuity)
 	file, err := os.OpenFile(rw.currentFileName,
 		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -93,8 +85,8 @@ func (rw *RotatingWriter) recreateDeletedLogFile() error {
 		return fmt.Errorf("failed to stat recreated log file: %w", err)
 	}
 	rw.currentFile = file
-	rw.currentSize = 0  // Reset - file is empty
-	rw.writeCounter = 0 // Reset validation counter
+	rw.currentSize = 0
+	rw.writeCounter = 0
 	rw.currentInode = extractInode(info)
 
 	return nil
@@ -110,35 +102,28 @@ func (rw *RotatingWriter) recoverMissingFile() error {
 
 // Write appends data to current log file and rotates if size limit exceeded
 func (rw *RotatingWriter) Write(p []byte) (n int, err error) {
-	// Lock for thread-safe file operations
 	rw.mu.Lock()
 	defer rw.mu.Unlock()
 
-	// Increment write counter
 	rw.writeCounter++
 
-	// Periodic validation check
 	if rw.writeCounter%rw.validationInterval == 0 {
-		if err := rw.recoverMissingFile(); err != nil { // DT-8
+		if err := rw.recoverMissingFile(); err != nil {
 			return 0, err
 		}
 	}
 
-	// Check if writing would exceed size limit and rotate if needed
 	if rw.currentSize+int64(len(p)) > rw.maxFileSize {
 		if err := rw.rotate(); err != nil {
 			return 0, err
 		}
 	}
 
-	// Attempt write
 	n, err = rw.currentFile.Write(p)
 	if err != nil {
-		// Write failed - try to recreate once
 		if recreateErr := rw.recreateDeletedLogFile(); recreateErr != nil {
 			return n, fmt.Errorf("write failed and recreation failed: %w", recreateErr)
 		}
-		// Retry write after recreation
 		n, err = rw.currentFile.Write(p)
 		if err != nil {
 			return n, fmt.Errorf("write failed after recreation: %w", err)
@@ -151,27 +136,21 @@ func (rw *RotatingWriter) Write(p []byte) (n int, err error) {
 
 // rotate closes current file and opens a new one with fresh session ID
 func (rw *RotatingWriter) rotate() error {
-	// Close current file if one is open
 	if rw.currentFile != nil {
 		rw.currentFile.Close()
 	}
 
-	// Generate new session ID for the new file
 	rw.sessionID = uuid.New().String()
-	// Reset write counter on rotation
 	rw.writeCounter = 0
 	return rw.openNewFile()
 }
 
 // openNewFile creates and opens a new log file with timestamp and session ID
 func (rw *RotatingWriter) openNewFile() error {
-	// Generate timestamp for log file name (YYYYMMDD-HHMMSS format)
 	timestamp := time.Now().Format("20060102-150405")
-	// Build filename with timestamp and truncated session ID
 	filename := fmt.Sprintf("telemetry-%s-%s.log", timestamp, rw.sessionID[:8])
 	filePath := filepath.Join(rw.logPath, filename)
 
-	// Open file with create, write, and append flags
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
@@ -184,7 +163,6 @@ func (rw *RotatingWriter) openNewFile() error {
 	}
 	rw.currentFile = file
 	rw.currentSize = 0
-	// Store full file path for validation
 	rw.currentFileName = filePath
 	rw.currentInode = extractInode(info)
 	return nil

@@ -23,15 +23,12 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
-// initTracer initializes OpenTelemetry tracer provider
 func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	// host:port only — OTLPTraceHTTP prepends http:// internally.
 	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
 		otlpEndpoint = "otel-collector:4318"
 	}
 
-	// Create OTLP trace exporter using HTTP protocol
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(otlpEndpoint),
 		otlptracehttp.WithInsecure(),
@@ -40,7 +37,6 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		return nil, err
 	}
 
-	// Create resource with service name
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceName("telemetry"),
@@ -51,15 +47,12 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 		return nil, err
 	}
 
-	// Create tracer provider
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
 	)
 
 	otel.SetTracerProvider(tp)
-
-	// Configure trace context propagation for distributed tracing
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
