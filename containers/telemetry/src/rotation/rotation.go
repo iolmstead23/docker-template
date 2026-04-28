@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,7 +62,7 @@ func (rw *RotatingWriter) checkFileExists() error {
 		}
 		return fmt.Errorf("failed to stat log file: %w", err)
 	}
-	if info.Sys().(*syscall.Stat_t).Ino != rw.currentInode {
+	if extractInode(info) != rw.currentInode {
 		return fmt.Errorf("log file replaced: inode changed")
 	}
 	return nil
@@ -96,7 +95,7 @@ func (rw *RotatingWriter) recreateDeletedLogFile() error {
 	rw.currentFile = file
 	rw.currentSize = 0  // Reset - file is empty
 	rw.writeCounter = 0 // Reset validation counter
-	rw.currentInode = info.Sys().(*syscall.Stat_t).Ino
+	rw.currentInode = extractInode(info)
 
 	return nil
 }
@@ -187,7 +186,7 @@ func (rw *RotatingWriter) openNewFile() error {
 	rw.currentSize = 0
 	// Store full file path for validation
 	rw.currentFileName = filePath
-	rw.currentInode = info.Sys().(*syscall.Stat_t).Ino
+	rw.currentInode = extractInode(info)
 	return nil
 }
 
