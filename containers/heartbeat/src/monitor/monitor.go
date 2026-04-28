@@ -54,7 +54,7 @@ func (m *Monitor) HealthCheckAllTargets(ctx context.Context) []HealthStatus {
 func (m *Monitor) checkTarget(ctx context.Context, target config.Target) HealthStatus {
 	status := HealthStatus{Name: target.Name}
 
-	client := &http.Client{Timeout: m.timeout}
+	client := &http.Client{Timeout: 5 * time.Second}
 	start := time.Now()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.URL, nil)
