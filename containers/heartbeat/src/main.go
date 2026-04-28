@@ -68,12 +68,12 @@ func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
 	return tp, nil
 }
 
-// initTracing initializes OpenTelemetry and returns a cleanup func for deferred shutdown
-func initTracing(ctx context.Context) func() {
+// initTracing initializes OpenTelemetry and returns the tracer and a cleanup func for deferred shutdown
+func initTracing(ctx context.Context) (trace.Tracer, func()) {
 	tp, err := initTracer(ctx)
 	if err != nil {
 		log.Printf("Failed to initialize tracer: %v", err)
-		return func() {}
+		return otel.Tracer("heartbeat"), func() {}
 	}
 
 	log.Println("OpenTelemetry tracer initialized")
@@ -83,7 +83,7 @@ func initTracing(ctx context.Context) func() {
 	span.End()
 	tp.ForceFlush(ctx)
 
-	return func() {
+	return tracer, func() {
 		if err := tp.Shutdown(ctx); err != nil {
 			log.Printf("Error shutting down tracer provider: %v", err)
 		}
@@ -133,19 +133,19 @@ func sendShutdownLog(ctx context.Context, telemetryClient *client.TelemetryClien
 }
 
 // awaitShutdown runs periodic health checks and handles graceful shutdown on signal
-func awaitShutdown(ctx context.Context, mon *monitor.Monitor, telemetryClient *client.TelemetryClient, interval time.Duration) {
+func awaitShutdown(ctx context.Context, mon *monitor.Monitor, telemetryClient *client.TelemetryClient, interval time.Duration, tracer trace.Tracer) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	runCheck(mon)
+	runCheck(mon, tracer)
 
 	for {
 		select {
 		case <-ticker.C:
-			runCheck(mon)
+			runCheck(mon, tracer)
 		case <-sigChan:
 			sendShutdownLog(ctx, telemetryClient)
 			return
@@ -157,17 +157,16 @@ func awaitShutdown(ctx context.Context, mon *monitor.Monitor, telemetryClient *c
 func main() {
 	ctx := context.Background()
 
-	stopTracing := initTracing(ctx)
+	tracer, stopTracing := initTracing(ctx)
 	defer stopTracing()
 
 	mon, telemetryClient, interval := setupMonitor()
 	sendStartupLog(ctx, telemetryClient)
-	awaitShutdown(ctx, mon, telemetryClient, interval)
+	awaitShutdown(ctx, mon, telemetryClient, interval, tracer)
 }
 
 // runCheck executes health checks on all targets and logs results both locally and to telemetry
-func runCheck(mon *monitor.Monitor) {
-	tracer := otel.Tracer("heartbeat")
+func runCheck(mon *monitor.Monitor, tracer trace.Tracer) {
 	ctx, span := tracer.Start(context.Background(), "health-check-batch")
 	defer span.End()
 
