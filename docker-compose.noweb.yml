@@ -42,8 +42,6 @@ services:
       - TELEMETRY_PORT=${TELEMETRY_PORT}
       - PROXY_HOST=${PROXY_HOST}
       - PROXY_PORT=${PROXY_PORT}
-      - WEBSERVICE_HOST=${WEBSERVICE_HOST}
-      - WEBSERVICE_PORT=${WEBSERVICE_PORT}
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
     networks:
       - internal
@@ -51,8 +49,6 @@ services:
       telemetry:
         condition: service_healthy
       proxy:
-        condition: service_healthy
-      webservice:
         condition: service_healthy
     restart: unless-stopped
 
@@ -66,8 +62,6 @@ services:
       - PROXY_PORT=${PROXY_PORT}
       - TELEMETRY_HOST=${TELEMETRY_HOST}
       - TELEMETRY_PORT=${TELEMETRY_PORT}
-      - WEBSERVICE_HOST=${WEBSERVICE_HOST}
-      - WEBSERVICE_PORT=${WEBSERVICE_PORT}
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
     ports:
       - "${PROXY_HOST_PORT}:${PROXY_PORT}"
