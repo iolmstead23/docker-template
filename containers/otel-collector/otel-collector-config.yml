@@ -26,12 +26,9 @@ exporters:
     tls:
       insecure: true
 
-  logging:
-    loglevel: debug
-
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch, resource]
-      exporters: [otlp, logging]
+      exporters: [otlp]
