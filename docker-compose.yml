@@ -17,7 +17,7 @@ services:
       - TELEMETRY_LOG_PATH=${TELEMETRY_LOG_PATH}
       - TELEMETRY_MAX_FILE_SIZE=${TELEMETRY_MAX_FILE_SIZE}
       - TELEMETRY_VALIDATION_INTERVAL=${TELEMETRY_VALIDATION_INTERVAL}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
     volumes:
       - ./logs:${TELEMETRY_LOG_PATH}
     networks:
@@ -44,7 +44,7 @@ services:
       - PROXY_PORT=${PROXY_PORT}
       - WEBSERVICE_HOST=${WEBSERVICE_HOST}
       - WEBSERVICE_PORT=${WEBSERVICE_PORT}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
     networks:
       - internal
     depends_on:
@@ -68,7 +68,7 @@ services:
       - TELEMETRY_PORT=${TELEMETRY_PORT}
       - WEBSERVICE_HOST=${WEBSERVICE_HOST}
       - WEBSERVICE_PORT=${WEBSERVICE_PORT}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
     ports:
       - "${PROXY_HOST_PORT}:${PROXY_PORT}"
     networks:
@@ -97,7 +97,7 @@ services:
       - TELEMETRY_HOST=${TELEMETRY_HOST}
       - TELEMETRY_PORT=${TELEMETRY_PORT}
       - STATE_PATH=${STATE_PATH:-/app/appState}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
     volumes:
       - ./appdata:${STATE_PATH:-/app/appState}
     networks:
