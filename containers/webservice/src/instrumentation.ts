@@ -56,8 +56,8 @@ export function register() {
     return;
   }
 
-  // Get OTLP endpoint from environment or use default (full URL with protocol for TypeScript)
-  const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4318/v1/traces';
+  const otlpBase = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'otel-collector:4318';
+  const otlpEndpoint = otlpBase.startsWith('http') ? otlpBase : `http://${otlpBase}/v1/traces`;
 
   console.log('Initializing OpenTelemetry for webservice...');
 
