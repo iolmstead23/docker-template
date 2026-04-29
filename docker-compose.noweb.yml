@@ -1,0 +1,113 @@
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  external:
+    driver: bridge
+
+services:
+  telemetry:
+    build:
+      context: ./containers/telemetry
+      dockerfile: Dockerfile
+    container_name: telemetry
+    hostname: ${TELEMETRY_HOST}
+    environment:
+      - TELEMETRY_PORT=${TELEMETRY_PORT}
+      - TELEMETRY_LOG_PATH=${TELEMETRY_LOG_PATH}
+      - TELEMETRY_MAX_FILE_SIZE=${TELEMETRY_MAX_FILE_SIZE}
+      - TELEMETRY_VALIDATION_INTERVAL=${TELEMETRY_VALIDATION_INTERVAL}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
+    volumes:
+      - ./logs:${TELEMETRY_LOG_PATH}
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:${TELEMETRY_PORT}/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  heartbeat:
+    build:
+      context: ./containers/heartbeat
+      dockerfile: Dockerfile
+    container_name: heartbeat
+    hostname: ${HEARTBEAT_HOST}
+    environment:
+      - HEARTBEAT_INTERVAL=${HEARTBEAT_INTERVAL}
+      - TELEMETRY_HOST=${TELEMETRY_HOST}
+      - TELEMETRY_PORT=${TELEMETRY_PORT}
+      - PROXY_HOST=${PROXY_HOST}
+      - PROXY_PORT=${PROXY_PORT}
+      - WEBSERVICE_HOST=${WEBSERVICE_HOST}
+      - WEBSERVICE_PORT=${WEBSERVICE_PORT}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
+    networks:
+      - internal
+    depends_on:
+      telemetry:
+        condition: service_healthy
+      proxy:
+        condition: service_healthy
+      webservice:
+        condition: service_healthy
+    restart: unless-stopped
+
+  proxy:
+    build:
+      context: ./containers/proxy
+      dockerfile: Dockerfile
+    container_name: proxy
+    hostname: ${PROXY_HOST}
+    environment:
+      - PROXY_PORT=${PROXY_PORT}
+      - TELEMETRY_HOST=${TELEMETRY_HOST}
+      - TELEMETRY_PORT=${TELEMETRY_PORT}
+      - WEBSERVICE_HOST=${WEBSERVICE_HOST}
+      - WEBSERVICE_PORT=${WEBSERVICE_PORT}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4318
+    ports:
+      - "${PROXY_HOST_PORT}:${PROXY_PORT}"
+    networks:
+      - internal
+      - external
+    depends_on:
+      telemetry:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:${PROXY_PORT}/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: otel-collector
+    hostname: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./containers/otel-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    networks:
+      - internal
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: jaeger
+    hostname: jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # Jaeger UI
+    networks:
+      - internal
+      - external
+    restart: unless-stopped

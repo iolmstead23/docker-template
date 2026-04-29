@@ -25,9 +25,6 @@ type LogRequest struct {
 	Source  string `json:"source"`
 }
 
-// GLOBAL VARIABLES
-// (none)
-
 // FUNCTIONS
 
 // NewTelemetryClient creates a client for sending logs to telemetry service
