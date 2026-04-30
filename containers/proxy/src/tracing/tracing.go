@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/caddyserver/caddy/v2"
@@ -22,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 
+	"proxy/config"
 	"proxy/telemetry"
 )
 
@@ -51,14 +51,9 @@ func init() {
 	httpcaddyfile.RegisterHandlerDirective("request_logger", parseCaddyfile)
 }
 
-// initTracer initializes OpenTelemetry tracer provider for proxy service
-func initTracer() (trace.Tracer, error) {
+// initTracer initializes OpenTelemetry tracer provider for the proxy service using the given OTLP endpoint.
+func initTracer(otlpEndpoint string) (trace.Tracer, error) {
 	ctx := context.Background()
-
-	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	if otlpEndpoint == "" {
-		otlpEndpoint = "otel-collector:4318"
-	}
 
 	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint(otlpEndpoint),
@@ -110,10 +105,11 @@ func (RequestLogger) CaddyModule() caddy.ModuleInfo {
 	}
 }
 
-// Provision sets up the middleware and initializes the telemetry client
+// Provision sets up the middleware using the centralized config and initializes the telemetry client
 func (rl *RequestLogger) Provision(ctx caddy.Context) error {
-	rl.telemetryClient = telemetry.New()
-	tracer, err := initTracer()
+	cfg := config.Active
+	rl.telemetryClient = telemetry.NewFromConfig(cfg.TelemetryURL, cfg.TelemetryTimeout)
+	tracer, err := initTracer(cfg.OTLPEndpoint)
 	if err != nil {
 		telemetry.Log(rl.telemetryClient, ctx.Context, "ERROR", fmt.Sprintf("OTLP tracer init failed, continuing with noop tracer: %v", err), "")
 		rl.tracer = noop.NewTracerProvider().Tracer("proxy")

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -29,44 +28,12 @@ type LogRequest struct {
 	Source  string `json:"source"`
 }
 
-// clientConfig holds telemetry service connection configuration
-type clientConfig struct {
-	url     string
-	timeout time.Duration
-}
-
-// loadClientConfig reads environment variables and constructs telemetry configuration
-func loadClientConfig() clientConfig {
-	host := os.Getenv("TELEMETRY_HOST")
-	if host == "" {
-		host = "telemetry"
-	}
-	port := os.Getenv("TELEMETRY_PORT")
-	if port == "" {
-		port = "8081"
-	}
-	timeoutStr := os.Getenv("TELEMETRY_TIMEOUT")
-	if timeoutStr == "" {
-		timeoutStr = "5s"
-	}
-	timeout, err := time.ParseDuration(timeoutStr)
-	if err != nil {
-		log.Printf("Invalid TELEMETRY_TIMEOUT %q, using default 5s: %v", timeoutStr, err)
-		timeout = 5 * time.Second
-	}
-	return clientConfig{
-		url:     fmt.Sprintf("http://%s:%s/log", host, port),
-		timeout: timeout,
-	}
-}
-
-// New constructs a Client from environment variables TELEMETRY_HOST, TELEMETRY_PORT, and TELEMETRY_TIMEOUT
-func New() *Client {
-	cfg := loadClientConfig()
+// NewFromConfig constructs a Client using the provided telemetry URL and HTTP timeout.
+func NewFromConfig(telemetryURL string, timeout time.Duration) *Client {
 	return &Client{
-		url: cfg.url,
+		url: telemetryURL,
 		client: &http.Client{
-			Timeout: cfg.timeout,
+			Timeout: timeout,
 		},
 	}
 }
