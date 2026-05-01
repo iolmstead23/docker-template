@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -16,8 +17,10 @@ import (
 
 // Client sends log entries to the centralized telemetry service
 type Client struct {
-	url    string
-	client *http.Client
+	url         string
+	client      *http.Client
+	mu          sync.Mutex
+	circuitOpen bool
 }
 
 // LogRequest represents a telemetry log entry with correlation ID for distributed tracing
@@ -38,11 +41,30 @@ func NewFromConfig(telemetryURL string, timeout time.Duration) *Client {
 	}
 }
 
-// Log sends a log entry via c, falling back to local logging on failure
+// Log sends a log entry via c; opens the circuit on first failure and suppresses subsequent errors until the endpoint recovers
 func Log(c *Client, ctx context.Context, level, message, logID string) {
 	if err := c.Log(ctx, level, message, logID); err != nil {
-		log.Printf("[ERROR] Failed to send telemetry log: %v (original message: %s)", err, message)
+		c.openCircuit(err, message)
+		return
 	}
+	c.closeCircuit()
+}
+
+// openCircuit logs the first telemetry failure and marks the circuit open; suppresses all subsequent failures until closeCircuit is called
+func (c *Client) openCircuit(err error, originalMessage string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.circuitOpen {
+		log.Printf("[ERROR] Failed to send telemetry log: %v (original message: %s)", err, originalMessage)
+		c.circuitOpen = true
+	}
+}
+
+// closeCircuit resets the circuit so the next failure will be logged
+func (c *Client) closeCircuit() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.circuitOpen = false
 }
 
 // Log submits a structured entry to the centralized telemetry service; attaches the current trace context for correlation
