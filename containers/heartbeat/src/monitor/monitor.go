@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"heartbeat/client"
@@ -14,9 +15,11 @@ import (
 
 // Monitor manages health checks for multiple service endpoints
 type Monitor struct {
-	targets   []config.Target
-	telemetry *client.TelemetryClient
-	timeout   time.Duration
+	targets        []config.Target
+	telemetry      *client.TelemetryClient
+	timeout        time.Duration
+	mu             sync.Mutex
+	lastTelErrTime time.Time
 }
 
 // HealthStatus represents the result of a single service health check
@@ -111,13 +114,23 @@ func (m *Monitor) LogResults(results []HealthStatus, traceID string) {
 	if len(unhealthyServices) == 0 {
 		message = fmt.Sprintf("All services healthy: %s", strings.Join(healthyServices, ", "))
 		if err := m.telemetry.Log("INFO", message, traceID); err != nil {
-			log.Printf("Failed to send health status to telemetry: %v", err)
+			m.logTelemetryError(err)
 		}
 	} else {
 		message = fmt.Sprintf("Service issues - healthy: [%s], unhealthy: [%s]",
 			strings.Join(healthyServices, ", "), strings.Join(unhealthyServices, ", "))
 		if err := m.telemetry.Log("WARN", message, traceID); err != nil {
-			log.Printf("Failed to send health warning to telemetry: %v", err)
+			m.logTelemetryError(err)
 		}
+	}
+}
+
+// logTelemetryError logs a telemetry send failure on first occurrence and then at most once per 5 minutes
+func (m *Monitor) logTelemetryError(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.lastTelErrTime.IsZero() || time.Since(m.lastTelErrTime) >= 5*time.Minute {
+		log.Printf("Failed to send health status to telemetry: %v", err)
+		m.lastTelErrTime = time.Now()
 	}
 }
